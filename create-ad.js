@@ -5,10 +5,17 @@ if (!currentUser) {
 }
 
 // ===== Импорт Firebase =====
-import { db } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showToast } from './utils.js';
 import { getAllAds, saveAd } from './api.js';
+
+// Ждём восстановления Firebase Auth сессии перед тем как давать публиковать
+let _authReady = false;
+onAuthStateChanged(auth, (user) => {
+    _authReady = !!user;
+});
 
 // ===== TOAST =====
 
@@ -330,6 +337,19 @@ async function updateAdCounter() {
 // ===== Отправка формы =====
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // Ждём Firebase Auth если ещё не готов (макс 3 сек)
+    if (!_authReady) {
+        let waited = 0;
+        while (!_authReady && waited < 3000) {
+            await new Promise(r => setTimeout(r, 100));
+            waited += 100;
+        }
+        if (!_authReady) {
+            showToast('Ошибка авторизации. Перезайди на страницу.', 'error');
+            return;
+        }
+    }
 
     // Проверка cooldown / антиспам
     const allowed = await checkCooldown();
