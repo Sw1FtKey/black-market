@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="main-body">
+
+<!-- ===== ШАПКА ===== -->
+<header class="main-header">
+
+    <div class="logo-center">
+        <span class="logo-black">BLACK</span>
+        <span class="logo-market">MARKET</span>
+    </div>
+
+    <!-- Бейдж статуса соединения -->
+    <div id="connectionBadge" style="display:none; align-items:center; gap:5px;
+        background:rgba(255,152,0,0.12); border:1px solid rgba(255,152,0,0.35);
+        border-radius:20px; padding:3px 10px; position:absolute; left:50%;
+        transform:translateX(calc(-50% + 80px));">
+        <div id="connectionDot" style="width:6px;height:6px;border-radius:50%;background:#ff9800;flex-shrink:0;"></div>
+        <span id="connectionText" style="color:#ff9800;font-size:11px;font-weight:600;">Офлайн</span>
+    </div>
+
+    <div class="profile-box" id="profileBox">
+        <div class="header-avatar-circle" id="headerAvatarCircle">P</div>
+        <span id="profileNickname">Player</span>
+    </div>
+
+</header>
+
+<!-- ===== БОКОВОЕ МЕНЮ ПРОФИЛЯ ===== -->
+<div class="profile-sidebar hidden" id="profileMenu">
+
+    <!-- ── ШАПКА: аватар + ник + роль + сервер ── -->
+    <div class="profile-sidebar-header">
+        <div class="sidebar-avatar-wrap" id="sidebarAvatarWrap">
+            <div class="sidebar-avatar-circle" id="sidebarAvatarCircle">S</div>
+            <div class="sidebar-avatar-edit" id="sidebarAvatarEdit" title="Сменить аватар">✏️</div>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+        </div>
+        <div class="profile-sidebar-info">
+            <span class="profile-sidebar-name" id="sidebarNickname">Player</span>
+            <span class="profile-sidebar-server" id="sidebarServer">Сервер</span>
+            <span class="role-badge hidden" id="sidebarRoleBadge"></span>
+        </div>
+    </div>
+
+    <!-- ── ТАБЫ ── -->
+    <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="main" onclick="switchSidebarTab('main',this)">Главное</button>
+        <button class="sidebar-tab" data-tab="profile" onclick="switchSidebarTab('profile',this)">Профиль</button>
+        <button class="sidebar-tab" data-tab="stats" onclick="switchSidebarTab('stats',this)">Статистика</button>
+    </div>
+
+    <!-- ── ТАБ: ГЛАВНОЕ ── -->
+    <div class="sidebar-tab-content active" id="sidebar-tab-main">
+        <div class="sidebar-section-label">Объявления</div>
+        <a href="create-ad.html" class="profile-menu-item">
+            <span class="menu-icon">➕</span><span>Создать объявление</span>
+        </a>
+        <a href="#" class="profile-menu-item" id="myAdsMenuItem">
+            <span class="menu-icon">📋</span><span>Мои объявления</span>
+            <span class="menu-badge hidden" id="myAdsCount">0</span>
+        </a>
+        <a href="#" class="profile-menu-item" id="favoritesMenuItem">
+            <span class="menu-icon">♥</span><span>Избранное</span>
+            <span class="menu-badge hidden" id="favCount">0</span>
+        </a>
+
+        <div class="sidebar-section-label">Аккаунт</div>
+        <a href="chat.html" class="profile-menu-item" id="chatMenuItem">
+            <span class="menu-icon">💬</span><span>Сообщения</span>
+            <span class="menu-badge hidden" id="chatCount">0</span>
+        </a>
+        <a href="servers.html" class="profile-menu-item">
+            <span class="menu-icon">🌐</span><span>Сменить сервер</span>
+        </a>
+        <a href="admin.html" class="profile-menu-item admin-only" style="display:none; color:#ff6b6b;">
+            <span class="menu-icon">🛡️</span><span>Админ-панель</span>
+        </a>
+
+        <div class="profile-sidebar-footer">
+            <button class="profile-menu-item" id="bugReportBtn" style="width:100%;background:none;border:none;cursor:pointer;color:#ff6b6b;text-align:left;">
+                <span class="menu-icon">⚠️</span><span>Сообщить об ошибке</span>
+            </button>
+            <button id="logoutButton" class="logout-btn">
+                <span class="menu-icon">🚪</span><span>Выйти</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ── ТАБ: ПРОФИЛЬ ── -->
+    <div class="sidebar-tab-content" id="sidebar-tab-profile">
+        <div class="avatar-upload-section-sidebar">
+            <div class="avatar-upload-preview" id="avatarUploadPreview">
+                <div class="sidebar-avatar-circle large" id="avatarPreviewCircle">S</div>
+            </div>
+            <button class="avatar-upload-btn" onclick="document.getElementById('avatarFileInput').click()">
+                📷 Загрузить фото
+            </button>
+            <p class="avatar-hint">JPG, PNG · до 2MB · рекомендуется квадратное</p>
+        </div>
+
+        <div class="profile-edit-fields">
+            <div class="edit-field-group">
+                <label class="edit-field-label">Никнейм</label>
+                <div class="edit-field-value" id="editNicknameDisplay">—</div>
+                <p class="edit-field-hint">Никнейм изменить нельзя</p>
+            </div>
+            <div class="edit-field-group">
+                <label class="edit-field-label">Telegram</label>
+                <input type="text" class="edit-field-input" id="editTelegram" placeholder="@username">
+            </div>
+            <div class="edit-field-group">
+                <label class="edit-field-label">Новый пароль</label>
+                <input type="password" class="edit-field-input" id="editPasswordNew" placeholder="Оставь пустым если не меняешь">
+            </div>
+            <div class="edit-field-group" id="editPasswordConfirmGroup" style="display:none">
+                <label class="edit-field-label">Повтори пароль</label>
+                <input type="password" class="edit-field-input" id="editPasswordConfirm" placeholder="Повтори новый пароль">
+            </div>
+        </div>
+        <button class="sidebar-save-btn" id="saveProfileBtn">Сохранить изменения</button>
+    </div>
+
+    <!-- ── ТАБ: СТАТИСТИКА ── -->
+    <div class="sidebar-tab-content" id="sidebar-tab-stats">
+        <div class="sidebar-stats-grid">
+            <div class="sidebar-stat-card">
+                <div class="sidebar-stat-num" id="sidebarViews">—</div>
+                <div class="sidebar-stat-lbl">Просмотров</div>
+            </div>
+            <div class="sidebar-stat-card">
+                <div class="sidebar-stat-num" id="sidebarFavs">—</div>
+                <div class="sidebar-stat-lbl">В избранном</div>
+            </div>
+            <div class="sidebar-stat-card">
+                <div class="sidebar-stat-num" id="sidebarAdsCount">—</div>
+                <div class="sidebar-stat-lbl">Объявлений</div>
+            </div>
+            <div class="sidebar-stat-card">
+                <div class="sidebar-stat-num" id="sidebarConversion">—</div>
+                <div class="sidebar-stat-lbl">Конверсия</div>
+            </div>
+        </div>
+
+        <div class="sidebar-section-label" style="margin-top:16px">Последние отзывы</div>
+        <div id="sidebarReviews">
+            <div style="color:#555;font-size:13px;padding:12px 0">Загрузка...</div>
+        </div>
+
+        <a href="stats.html" class="profile-menu-item" style="margin-top:8px;justify-content:center;font-size:13px;color:#888;">
+            📊 Подробная статистика →
+        </a>
+    </div>
+
+</div>
+
+<!-- Затемнение фона при открытом меню -->
+<div class="profile-overlay hidden" id="profileOverlay"></div>
+
+<!-- ===== ОСНОВНАЯ ОБЛАСТЬ ===== -->
+<div class="main-layout">
+
+    <!-- ЛЕВАЯ ПАНЕЛЬ КАТЕГОРИЙ -->
+    <aside class="categories">
+        <h3>Категории</h3>
+        <ul id="categoryList">
+            <li data-category="all" class="active">Все</li>
+            <li data-category="houses">Дома</li>
+            <li data-category="garages">Гаражи</li>
+            <li data-category="cars">Машины</li>
+            <li data-category="business">Бизнесы</li>
+            <li data-category="accessories">Аксессуары</li>
+            <li data-category="skins">Скины</li>
+            <li data-category="other">Разное</li>
+        </ul>
+    </aside>
+
+    <!-- ЦЕНТР -->
+    <main class="content">
+
+        <!-- Панель поиска -->
+        <div class="search-panel">
+            <input type="text" id="searchInput" placeholder="Поиск...">
+            <div class="sort-btns" id="sortBtns">
+                <button class="sort-btn active" data-sort="newest">Новые</button>
+                <button class="sort-btn" data-sort="oldest">Старые</button>
+                <button class="sort-btn" data-sort="price_asc">Цена ↑</button>
+                <button class="sort-btn" data-sort="price_desc">Цена ↓</button>
+            </div>
+        </div>
+
+        <!-- Сетка объявлений -->
+        <div class="ads-grid" id="adsGrid">
+            <!-- карточки объявлений позже -->
+        </div>
+
+    </main>
+</div>
+
+<!-- ===== КНОПКА ДОБАВИТЬ ===== -->
+<button class="add-button" id="addAdButton">+</button>
+
+<!-- ===== МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ ПРОФИЛЯ ===== -->
+<div class="profile-modal-overlay hidden" id="editProfileModal">
+    <div class="profile-modal-content">
+        <button class="profile-modal-close" onclick="closeProfileEdit()">&times;</button>
+        <h2 class="profile-modal-title">Редактировать профиль</h2>
+        
+        <div class="profile-edit-form">
+            <!-- Аватар (просто показываем, без загрузки) -->
+            <div class="avatar-upload-section">
+                <div class="current-avatar" id="editAvatarPreview">
+                    <img src="images.jpg" alt="Аватар" style="width:100%;height:100%;object-fit:cover;">
+                </div>
+            </div>
+
+            <!-- Никнейм -->
+            <div class="form-group">
+                <label>Никнейм</label>
+                <input type="text" id="editNickname" placeholder="Новый никнейм">
+            </div>
+
+            <!-- Текущий пароль -->
+            <div class="form-group">
+                <label>Текущий пароль</label>
+                <input type="password" id="currentPassword" placeholder="Для подтверждения изменений">
+            </div>
+
+            <!-- Новый пароль -->
+            <div class="form-group">
+                <label>Новый пароль (оставь пустым, если не меняешь)</label>
+                <input type="password" id="newPassword" placeholder="Новый пароль">
+            </div>
+
+            <!-- Подтверждение нового пароля -->
+            <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                <label>Повтори новый пароль</label>
+                <input type="password" id="confirmNewPassword" placeholder="Повтори пароль">
+            </div>
+
+            <div class="edit-actions">
+                <button class="save-btn" onclick="saveProfileChanges()">Сохранить</button>
+                <button class="cancel-btn" onclick="closeProfileEdit()">Отмена</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ===== МОДАЛКА БАГ-РЕПОРТА ===== -->
+<div class="bug-modal-overlay hidden" id="bugReportModal">
+    <div class="bug-modal">
+        <div class="bug-modal-header">
+            <h3>🐛 Сообщить об ошибке</h3>
+            <button class="bug-modal-close" id="bugModalClose">×</button>
+        </div>
+        <div class="bug-modal-body">
+            <div class="bug-field">
+                <label>Тип проблемы</label>
+                <select id="bugType">
+                    <option value="bug">🐛 Баг / ошибка</option>
+                    <option value="ui">🎨 Проблема с интерфейсом</option>
+                    <option value="performance">⚡ Тормоза / лаги</option>
+                    <option value="chat">💬 Проблема с чатом</option>
+                    <option value="ads">📋 Проблема с объявлениями</option>
+                    <option value="other">💡 Предложение / другое</option>
+                </select>
+            </div>
+            <div class="bug-field">
+                <label>Описание</label>
+                <textarea id="bugDescription" placeholder="Опишите что произошло и как воспроизвести..." rows="4"></textarea>
+            </div>
+            <div class="bug-field">
+                <label>Где произошло</label>
+                <select id="bugPage">
+                    <option value="Главная">Главная (лента объявлений)</option>
+                    <option value="Создание объявления">Создание объявления</option>
+                    <option value="Профиль">Профиль</option>
+                    <option value="Чат">Чат / сообщения</option>
+                    <option value="Регистрация / Вход">Регистрация / Вход</option>
+                    <option value="Выбор сервера">Выбор сервера</option>
+                    <option value="Статистика">Статистика</option>
+                    <option value="Другое">Другое</option>
+                </select>
+            </div>
+            <div class="bug-field">
+                <label>Скриншот <span style="color:#666;font-weight:400;">(необязательно)</span></label>
+                <div id="bugPhotoZone" style="
+                    border: 2px dashed rgba(255,255,255,0.12);
+                    border-radius: 10px;
+                    padding: 16px;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: border-color 0.2s;
+                    position: relative;
+                " onclick="document.getElementById('bugPhotoInput').click()">
+                    <input type="file" id="bugPhotoInput" accept="image/*" style="display:none">
+                    <div id="bugPhotoPlaceholder" style="color:#666; font-size:13px;">
+                        📎 Нажми чтобы прикрепить скриншот
+                    </div>
+                    <div id="bugPhotoPreview" style="display:none;">
+                        <img id="bugPhotoImg" style="max-width:100%; max-height:160px; border-radius:8px; object-fit:contain;">
+                        <div style="color:#aaa; font-size:12px; margin-top:6px;">
+                            <span id="bugPhotoName"></span>
+                            <button onclick="event.stopPropagation(); removeBugPhoto()" style="
+                                background:none; border:none; color:#ff6b6b;
+                                cursor:pointer; font-size:12px; margin-left:8px;
+                            ">✕ Удалить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bug-modal-footer">
+            <button class="bug-cancel-btn" id="bugCancelBtn">Отмена</button>
+            <button class="bug-submit-btn" id="bugSubmitBtn">📤 Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== СТАТУС СОЕДИНЕНИЯ =====
+function showConnectionBadge(type) {
+    const badge = document.getElementById('connectionBadge');
+    const dot   = document.getElementById('connectionDot');
+    const text  = document.getElementById('connectionText');
+    if (!badge) return;
+
+    if (type === 'offline') {
+        badge.style.display = 'flex';
+        badge.style.background = 'rgba(255,152,0,0.12)';
+        badge.style.borderColor = 'rgba(255,152,0,0.35)';
+        dot.style.background = '#ff9800';
+        text.style.color = '#ff9800';
+        text.textContent = 'Офлайн';
+    } else {
+        badge.style.background = 'rgba(76,175,80,0.12)';
+        badge.style.borderColor = 'rgba(76,175,80,0.35)';
+        dot.style.background = '#4caf50';
+        text.style.color = '#4caf50';
+        text.textContent = 'Онлайн';
+        // Скрываем через 3 секунды
+        setTimeout(() => { badge.style.display = 'none'; }, 3000);
+    }
+}
+
+window.addEventListener('offline', () => showConnectionBadge('offline'));
+window.addEventListener('online',  () => showConnectionBadge('online'));
+</script>
+<script type="module" src="error-logger.js"></script>
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="script.js"></script>
+</body>
+</html>

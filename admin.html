@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body">
+
+<a href="index.html" class="back-button">← Назад</a>
+
+<div class="admin-container">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <h1 class="admin-title" style="margin:0;">🛡️ Админ-панель</h1>
+        <div id="roleBadge"></div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="admin-stats" id="adminStats">
+        <div class="stat-card">
+            <span class="stat-number" id="newReportsCount">0</span>
+            <span class="stat-label">Новые жалобы</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number" id="totalReportsCount">0</span>
+            <span class="stat-label">Всего жалоб</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number" id="resolvedCount">0</span>
+            <span class="stat-label">Решено</span>
+        </div>
+    </div>
+
+    <!-- Фильтры жалоб -->
+    <div class="admin-filters">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="new">Новые</button>
+        <button class="filter-btn" data-filter="viewed">В работе</button>
+        <button class="filter-btn" data-filter="resolved">Решённые</button>
+    </div>
+
+    <!-- Табы (рендерятся динамически по роли) -->
+    <div class="admin-tabs" id="adminTabs"></div>
+
+    <!-- Панель массовых действий -->
+    <div class="mass-actions-panel hidden" id="massActionsPanel">
+        <span class="mass-actions-count">Выбрано: <strong id="selectedCount">0</strong></span>
+        <div class="mass-actions-btns">
+            <button class="mass-btn resolve" onclick="massTakeInWork()">⚡ Взять в работу</button>
+            <button class="mass-btn resolve" onclick="massResolve()">✓ Отметить решёнными</button>
+            <button class="mass-btn cancel" onclick="document.querySelectorAll('.report-checkbox').forEach(c=>c.checked=false); selectedReports?.clear(); document.getElementById('massActionsPanel').classList.add('hidden');">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Список жалоб -->
+    <div class="reports-list" id="reportsList"></div>
+
+    <!-- Журнал -->
+    <div class="logs-list hidden" id="logsList">
+        <div class="logs-filters">
+            <select id="logActionFilter">
+                <option value="all">Все действия</option>
+                <option value="delete_ad">Удаление</option>
+                <option value="ban_user">Баны</option>
+                <option value="warn_user">Предупреждения</option>
+                <option value="resolve_report">Жалобы</option>
+                <option value="unban_user">Разбаны</option>
+                <option value="assign_role">Назначение ролей</option>
+            </select>
+            <input type="text" id="logSearch" placeholder="Поиск...">
+        </div>
+        <div class="logs-table" id="logsTable"></div>
+    </div>
+
+    <!-- Баны -->
+    <div class="hidden" id="bansPanel" style="margin-top:16px;"></div>
+
+    <!-- Статистика платформы -->
+    <div class="hidden" id="platformPanel" style="margin-top:16px;"></div>
+
+    <!-- Управление ролями -->
+    <div class="hidden" id="rolesPanel" style="margin-top:16px;"></div>
+    <div class="hidden" id="badgesPanel" style="margin-top:16px;"></div>
+
+    <!-- Баг-репорты -->
+    <div class="hidden" id="bugReportsPanel" style="margin-top:16px;"></div>
+</div>
+
+<script type="module" src="error-logger.js"></script>
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="admin.js"></script>
+</body>
+</html>

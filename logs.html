@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логи ошибок — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0b0b0b; color: white; font-family: Arial, sans-serif; padding: 20px; }
+
+        .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+        h1 { color: #ff1e1e; font-size: 24px; }
+        .back { color: #888; text-decoration: none; font-size: 14px; }
+        .back:hover { color: white; }
+
+        /* Фильтры */
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #888; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .filter-btn.active { border-color: #ff1e1e; color: #ff1e1e; background: rgba(255,30,30,0.1); }
+        .filter-btn.warn.active { border-color: #ff9800; color: #ff9800; background: rgba(255,152,0,0.1); }
+        .filter-btn.info.active { border-color: #2196f3; color: #2196f3; background: rgba(33,150,243,0.1); }
+
+        input[type="text"] { padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(34,34,34,0.8); color: white; font-size: 14px; min-width: 200px; }
+
+        /* Статистика */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: rgba(17,17,17,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; text-align: center; }
+        .stat-num { font-size: 28px; font-weight: bold; }
+        .stat-label { color: #666; font-size: 12px; margin-top: 4px; }
+
+        /* Таблица логов */
+        .logs { display: flex; flex-direction: column; gap: 8px; }
+        .log-item { background: rgba(17,17,17,0.95); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color 0.2s; }
+        .log-item:hover { border-color: rgba(255,255,255,0.15); }
+        .log-item.error { border-left: 3px solid #f44336; }
+        .log-item.warn  { border-left: 3px solid #ff9800; }
+        .log-item.info  { border-left: 3px solid #2196f3; }
+
+        .log-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .log-level { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+        .level-error { background: rgba(244,67,54,0.2); color: #f44336; }
+        .level-warn  { background: rgba(255,152,0,0.2); color: #ff9800; }
+        .level-info  { background: rgba(33,150,243,0.2); color: #2196f3; }
+
+        .log-message { flex: 1; color: white; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .log-meta { font-size: 12px; color: #555; white-space: nowrap; }
+
+        .log-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); display: none; }
+        .log-details.open { display: block; }
+        .detail-row { display: flex; gap: 8px; margin-bottom: 4px; font-size: 13px; }
+        .detail-key { color: #666; min-width: 80px; }
+        .detail-val { color: #aaa; word-break: break-all; }
+
+        .btn-clear { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(244,67,54,0.3); background: rgba(244,67,54,0.1); color: #f44336; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .btn-clear:hover { background: rgba(244,67,54,0.2); }
+
+        .empty { text-align: center; padding: 60px; color: #444; }
+        .loading { text-align: center; padding: 60px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <a href="index.html" class="back">← Назад</a>
+    <h1>📊 Логи ошибок</h1>
+    <span id="lastUpdated" style="color:#555;font-size:13px;margin-left:auto;"></span>
+    <button class="btn-clear" onclick="clearLogs()">🗑 Очистить</button>
+</div>
+
+<!-- Статистика -->
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-num" id="totalCount" style="color:#ff1e1e;">—</div>
+        <div class="stat-label">Всего записей</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num" id="errorCount" style="color:#f44336;">—</div>
+        <div class="stat-label">Ошибок</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num" id="warnCount" style="color:#ff9800;">—</div>
+        <div class="stat-label">Предупреждений</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num" id="infoCount" style="color:#2196f3;">—</div>
+        <div class="stat-label">Событий</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num" id="uniqueUsers" style="color:#4caf50;">—</div>
+        <div class="stat-label">Пользователей</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num" id="uniquePages" style="color:#9c27b0;">—</div>
+        <div class="stat-label">Страниц</div>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="filters">
+    <button class="filter-btn active" data-level="all" onclick="setFilter('all', this)">Все</button>
+    <button class="filter-btn active error" data-level="error" onclick="setFilter('error', this)">❌ Ошибки</button>
+    <button class="filter-btn warn" data-level="warn" onclick="setFilter('warn', this)">⚠️ Предупреждения</button>
+    <button class="filter-btn info" data-level="info" onclick="setFilter('info', this)">ℹ️ События</button>
+    <input type="text" id="searchInput" placeholder="Поиск по тексту, странице, пользователю..." oninput="renderLogs()">
+</div>
+
+<!-- Логи -->
+<div class="logs" id="logsList">
+    <div class="loading">⏳ Загрузка логов...</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCYrWPXWGV0oPuupZsJxeBgw7yW-mDlPrI",
+    authDomain: "black-market-f89de.firebaseapp.com",
+    projectId: "black-market-f89de",
+    storageBucket: "black-market-f89de.firebasestorage.app",
+    messagingSenderId: "908641278023",
+    appId: "1:908641278023:web:bce6d0bb7c358af7fcb962"
+};
+
+const app = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+let allLogs = [];
+let activeFilter = 'all';
+
+async function loadLogs() {
+    try {
+        const snap = await getDoc(doc(db, 'errorLogs', 'logs'));
+        allLogs = snap.exists() ? snap.data().items || [] : [];
+
+        const lastUpdated = snap.exists() ? snap.data().lastUpdated : null;
+        if (lastUpdated) {
+            document.getElementById('lastUpdated').textContent =
+                'Обновлено: ' + new Date(lastUpdated).toLocaleString('ru-RU');
+        }
+
+        updateStats();
+        renderLogs();
+    } catch (e) {
+        document.getElementById('logsList').innerHTML =
+            '<div class="empty">❌ Ошибка загрузки. Возможно нет прав доступа.</div>';
+    }
+}
+
+function updateStats() {
+    document.getElementById('totalCount').textContent  = allLogs.length;
+    document.getElementById('errorCount').textContent  = allLogs.filter(l => l.level === 'error').length;
+    document.getElementById('warnCount').textContent   = allLogs.filter(l => l.level === 'warn').length;
+    document.getElementById('infoCount').textContent   = allLogs.filter(l => l.level === 'info').length;
+    document.getElementById('uniqueUsers').textContent = new Set(allLogs.map(l => l.user)).size;
+    document.getElementById('uniquePages').textContent = new Set(allLogs.map(l => l.page)).size;
+}
+
+window.renderLogs = function() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    let filtered = allLogs;
+
+    if (activeFilter !== 'all') {
+        filtered = filtered.filter(l => l.level === activeFilter);
+    }
+
+    if (search) {
+        filtered = filtered.filter(l =>
+            l.message?.toLowerCase().includes(search) ||
+            l.page?.toLowerCase().includes(search) ||
+            l.user?.toLowerCase().includes(search) ||
+            l.details?.toLowerCase().includes(search)
+        );
+    }
+
+    const container = document.getElementById('logsList');
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty">📭 Логов не найдено</div>';
+        return;
+    }
+
+    container.innerHTML = filtered.map((log, i) => {
+        const time = new Date(log.timestamp).toLocaleString('ru-RU');
+        const levelClass = log.level === 'error' ? 'level-error' : log.level === 'warn' ? 'level-warn' : 'level-info';
+        let details = {};
+        try { details = JSON.parse(log.details || '{}'); } catch {}
+
+        return `
+        <div class="log-item ${log.level}" onclick="toggleDetails(${i})">
+            <div class="log-header">
+                <span class="log-level ${levelClass}">${log.level}</span>
+                <span class="log-message">${escapeHtml(log.message)}</span>
+                <span class="log-meta">${escapeHtml(log.page)} · ${escapeHtml(log.user)} · ${time}</span>
+            </div>
+            <div class="log-details" id="details-${i}">
+                <div class="detail-row"><span class="detail-key">Страница:</span><span class="detail-val">${escapeHtml(log.page)}</span></div>
+                <div class="detail-row"><span class="detail-key">Юзер:</span><span class="detail-val">${escapeHtml(log.user)}</span></div>
+                <div class="detail-row"><span class="detail-key">Браузер:</span><span class="detail-val">${escapeHtml(log.ua || '—')}</span></div>
+                ${Object.entries(details).map(([k, v]) =>
+                    `<div class="detail-row"><span class="detail-key">${escapeHtml(k)}:</span><span class="detail-val">${escapeHtml(String(v))}</span></div>`
+                ).join('')}
+            </div>
+        </div>`;
+    }).join('');
+};
+
+window.toggleDetails = function(i) {
+    const el = document.getElementById(`details-${i}`);
+    if (el) el.classList.toggle('open');
+};
+
+window.setFilter = function(level, btn) {
+    activeFilter = level;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderLogs();
+};
+
+window.clearLogs = async function() {
+    if (!confirm('Очистить все логи?')) return;
+    try {
+        await setDoc(doc(db, 'errorLogs', 'logs'), { items: [], lastUpdated: new Date().toISOString() });
+        allLogs = [];
+        updateStats();
+        renderLogs();
+    } catch (e) {
+        alert('Ошибка очистки: ' + e.message);
+    }
+};
+
+function escapeHtml(text) {
+    if (!text) return '—';
+    return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Ждём Firebase Auth перед загрузкой — иначе permission-denied
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        window.location.href = 'register.html';
+        return;
+    }
+    loadLogs();
+    setInterval(loadLogs, 30000);
+});
+</script>
+</body>
+</html>

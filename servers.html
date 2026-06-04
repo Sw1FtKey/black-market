@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор сервера — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="servers-body">
+
+<!-- Кнопка назад -->
+<a href="register.html" class="back-button">← Назад</a>
+
+<!-- Переключатель режимов -->
+<div class="server-mode-toggle">
+    <button id="myServerBtn" class="mode-btn active">Мой сервер</button>
+    <button id="allServersBtn" class="mode-btn">Все сервера</button>
+</div>
+
+<h1 class="servers-title">Выберите сервер</h1>
+
+<!-- ПОИСК СЕРВЕРОВ -->
+<div class="server-search-container" id="serverSearchContainer" style="max-width: 500px; margin: 0 auto 30px; display: none;">
+    <div class="server-search-wrapper" style="position: relative;">
+        <span class="search-icon" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888;">🔍</span>
+        <input type="text" id="serverSearchInput" placeholder="Поиск сервера..." 
+               style="width: 100%; padding: 14px 20px 14px 45px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); 
+                      background: rgba(34,34,34,0.8); color: white; font-size: 16px;">
+        <button id="clearSearchBtn" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); 
+                background: none; border: none; color: #888; cursor: pointer; font-size: 18px; display: none;">✕</button>
+    </div>
+    <p class="search-results-count" id="searchResultsCount" style="color: #888; font-size: 13px; margin-top: 10px; text-align: center;"></p>
+</div>
+
+<!-- Контейнер для одного сервера -->
+<div class="single-server-container hidden" id="singleServerView">
+    <div class="last-server-info">
+        <p>Последний выбранный сервер:</p>
+        <div class="server-card-large" id="lastServerCard"></div>
+        <button class="change-server-btn" id="changeServerBtn">Сменить сервер</button>
+    </div>
+</div>
+
+<!-- Сетка всех серверов -->
+<div class="servers-grid" id="serversGrid"></div>
+<script type="module" src="error-logger.js"></script>
+<script type="module" src="servers.js"></script>
+</body>
+</html>

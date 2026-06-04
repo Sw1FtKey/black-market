@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Market — Вход</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+    
+
+<div class="auth-container">
+    <h1 class="logo">
+        <span class="logo-black">BLACK</span>
+        <span class="logo-market">MARKET</span>
+    </h1>
+
+    <p class="auth-subtitle">Войдите или создайте аккаунт</p>
+
+    <!-- Переключатели -->
+    <div class="auth-toggle">
+        <button id="loginToggle" class="active">Вход</button>
+        <button id="registerToggle">Регистрация</button>
+    </div>
+
+    <!-- Форма входа -->
+    <form id="loginForm" class="auth-form">
+        <input type="text" id="loginNickname" placeholder="Никнейм" required>
+        <input type="password" id="loginPassword" placeholder="Пароль" required>
+        <button type="submit">Войти</button>
+    </form>
+
+    <!-- Форма регистрации -->
+    <form id="registerForm" class="auth-form hidden">
+        <input type="text" id="regNickname" placeholder="Никнейм" required>
+        <input type="password" id="regPassword" placeholder="Пароль" required>
+        <input type="password" id="regConfirmPassword" placeholder="Повторите пароль" required>
+        <button type="submit">Создать аккаунт</button>
+    </form>
+     <div class="auth-slogan">Торгуй по чёрному <span>😈</span></div>
+</div>
+
+<!-- ОДИН скрипт с type="module", остальное импортируется внутри -->
+<script type="module" src="error-logger.js"></script>
+<script type="module" src="register.js"></script>
+</body>
+</html>

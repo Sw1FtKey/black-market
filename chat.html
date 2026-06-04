@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="chat-body">
+    
+    <header class="main-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+        <a href="index.html" class="back-button" style="position: static; margin-right: auto;">← Назад</a>
+        
+        <div class="logo-center" style="position: absolute; left: 50%; transform: translateX(-50%);">
+            <span class="logo-black">BLACK</span>
+            <span class="logo-market">MARKET</span>
+        </div>
+        
+        <div style="width: 100px;"></div>
+    </header>
+
+    <div class="chat-container">
+        <div class="chat-sidebar">
+            <div class="chat-sidebar-header">
+                <h2>💬 Сообщения</h2>
+            </div>
+            <div id="chatList" class="chat-list">
+                <div class="chat-loading">
+                    <div style="font-size: 48px; margin-bottom: 15px;">💬</div>
+                    <p>Загрузка...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="chatWindow" class="chat-window">
+            <div class="chat-empty">
+                <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;">💬</div>
+                <p>Выберите чат или напишите продавцу</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="error-logger.js"></script>
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="chat-ui.js"></script>
+</body>
+</html>

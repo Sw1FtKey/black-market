@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            gap: 16px;
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(135deg, #ff1e1e, #660000);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -4px;
+        }
+
+        .error-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin: 0;
+        }
+
+        .error-hint {
+            font-size: 15px;
+            color: #666;
+            max-width: 320px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .error-btns {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .error-btn-primary {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #ff1e1e, #cc0000);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .error-btn-primary:hover { opacity: 0.85; }
+
+        .error-btn-secondary {
+            padding: 12px 28px;
+            background: rgba(255,255,255,0.06);
+            color: #aaa;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .error-btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .error-logo {
+            font-size: 13px;
+            color: #333;
+            position: absolute;
+            bottom: 24px;
+        }
+
+        .error-logo span:first-child { color: #ff1e1e; font-weight: 700; }
+        .error-logo span:last-child  { color: #888; font-weight: 700; }
+    </style>
+</head>
+<body class="main-body" style="position:relative;">
+
+<div class="error-page">
+    <div class="error-code">404</div>
+    <p class="error-title">Страница не найдена</p>
+    <p class="error-hint">Возможно, ссылка устарела или объявление было удалено</p>
+    <div class="error-btns">
+        <a href="index.html" class="error-btn-primary">← На главную</a>
+        <a href="javascript:history.back()" class="error-btn-secondary">Назад</a>
+    </div>
+</div>
+
+<div class="error-logo">
+    <span>BLACK</span> <span>MARKET</span>
+</div>
+
+</body>
+</html>

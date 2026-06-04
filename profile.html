@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .profile-page { max-width: 720px; margin: 0 auto; padding: 20px; }
+
+        /* ── Шапка профиля ── */
+        .profile-hero {
+            background: linear-gradient(180deg, rgba(255,30,30,0.07) 0%, rgba(17,17,17,0.98) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 28px 24px 20px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .profile-hero-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff1e1e, #800000);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+            border: 2px solid rgba(255,30,30,0.35);
+            overflow: hidden;
+        }
+
+        .profile-hero-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .profile-hero-info { flex: 1; min-width: 0; }
+
+        .profile-hero-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 6px;
+        }
+
+        .profile-hero-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .profile-hero-rating {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #888;
+            flex-wrap: wrap;
+        }
+
+        .profile-hero-stars { color: #ffd700; font-size: 16px; letter-spacing: 1px; }
+        .profile-hero-rating-val { color: white; font-weight: 700; }
+
+        .profile-hero-since { font-size: 12px; color: #555; margin-top: 4px; }
+
+        /* ── Статистика ── */
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            background: rgba(17,17,17,0.98);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .profile-stat {
+            padding: 16px 10px;
+            text-align: center;
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .profile-stat:last-child { border-right: none; }
+        .profile-stat-num { font-size: 22px; font-weight: 700; color: white; }
+        .profile-stat-lbl { font-size: 11px; color: #666; margin-top: 3px; }
+
+        /* ── Табы ── */
+        .profile-tabs {
+            display: flex;
+            background: rgba(17,17,17,0.98);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px 14px 0 0;
+            overflow: hidden;
+            border-bottom: none;
+        }
+
+        .profile-tab {
+            flex: 1;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+            background: none;
+            border-left: none;
+            border-right: none;
+            border-top: none;
+        }
+
+        .profile-tab.active { color: #ff1e1e; border-bottom-color: #ff1e1e; }
+        .profile-tab:hover:not(.active) { color: #aaa; }
+
+        /* ── Контент ── */
+        .profile-content {
+            background: rgba(17,17,17,0.98);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0 0 14px 14px;
+            padding: 16px;
+            min-height: 200px;
+        }
+
+        /* ── Карточка объявления в профиле ── */
+        .profile-ad-row {
+            display: flex;
+            gap: 14px;
+            padding: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .profile-ad-row:last-child { margin-bottom: 0; }
+        .profile-ad-row:hover { border-color: rgba(255,30,30,0.3); background: rgba(255,30,30,0.05); }
+
+        .profile-ad-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            overflow: hidden;
+        }
+
+        .profile-ad-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+
+        .profile-ad-body { flex: 1; min-width: 0; }
+        .profile-ad-cat { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; text-transform: uppercase; margin-bottom: 4px; }
+        .profile-ad-title { font-size: 15px; font-weight: 600; color: white; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-ad-price { font-size: 15px; font-weight: 700; color: #ff1e1e; }
+        .profile-ad-date { font-size: 12px; color: #555; margin-top: 2px; }
+        .profile-ad-arrow { color: #333; font-size: 22px; display: flex; align-items: center; }
+
+        /* ── Отзывы ── */
+        .profile-review {
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .profile-review:last-child { border-bottom: none; }
+
+        .profile-review-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .profile-review-author {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+        }
+
+        .profile-review-stars { color: #ffd700; font-size: 13px; }
+        .profile-review-date { font-size: 11px; color: #444; }
+        .profile-review-text { font-size: 13px; color: #777; line-height: 1.6; }
+
+        /* ── Пустые состояния ── */
+        .profile-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #555;
+        }
+
+        .profile-empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .profile-empty-text { font-size: 15px; }
+
+        /* ── Скелетон ── */
+        .profile-skeleton-line {
+            height: 14px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+            background-size: 200% 100%;
+            animation: skeletonShimmer 1.4s infinite;
+            margin-bottom: 8px;
+        }
+
+        @keyframes skeletonShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ── Кнопка написать ── */
+        .profile-write-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #ff1e1e, #cc0000);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+            margin-top: 12px;
+        }
+
+        .profile-write-btn:hover { opacity: 0.85; }
+
+        @media (max-width: 480px) {
+            .profile-hero { flex-direction: column; gap: 12px; }
+            .profile-stats { grid-template-columns: repeat(2, 1fr); }
+            .profile-stat:nth-child(2) { border-right: none; }
+            .profile-stat:nth-child(1),
+            .profile-stat:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,0.06); }
+            .profile-hero-name { font-size: 20px; }
+        }
+    </style>
+</head>
+<body class="main-body">
+
+<a href="javascript:history.back()" class="back-button">← Назад</a>
+
+<div class="profile-page">
+
+    <!-- Шапка -->
+    <div class="profile-hero" id="profileHero">
+        <div class="profile-hero-avatar" id="heroAvatar">?</div>
+        <div class="profile-hero-info">
+            <div class="profile-hero-name" id="heroName">Загрузка...</div>
+            <div class="profile-hero-badges" id="heroBadges"></div>
+            <div class="profile-hero-rating" id="heroRating">
+                <div class="profile-skeleton-line" style="width:120px;height:12px;"></div>
+            </div>
+            <div class="profile-hero-since" id="heroSince"></div>
+            <div id="heroActions"></div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="profile-stats">
+        <div class="profile-stat">
+            <div class="profile-stat-num" id="statAds">—</div>
+            <div class="profile-stat-lbl">Объявлений</div>
+        </div>
+        <div class="profile-stat">
+            <div class="profile-stat-num" id="statViews">—</div>
+            <div class="profile-stat-lbl">Просмотров</div>
+        </div>
+        <div class="profile-stat">
+            <div class="profile-stat-num" id="statFavs">—</div>
+            <div class="profile-stat-lbl">В избранном</div>
+        </div>
+        <div class="profile-stat">
+            <div class="profile-stat-num" id="statRating" style="color:#ffd700;">—</div>
+            <div class="profile-stat-lbl">Рейтинг</div>
+        </div>
+    </div>
+
+    <!-- Табы -->
+    <div class="profile-tabs">
+        <button class="profile-tab active" onclick="switchTab('ads', this)">📋 Объявления</button>
+        <button class="profile-tab" onclick="switchTab('reviews', this)">⭐ Отзывы</button>
+        <button class="profile-tab" onclick="switchTab('achievements', this)">🏅 Достижения</button>
+    </div>
+
+    <!-- Контент -->
+    <div class="profile-content">
+        <div id="tabAds"></div>
+        <div id="tabReviews" style="display:none;"></div>
+        <div id="tabAchievements" style="display:none;"></div>
+    </div>
+
+</div>
+
+<script type="module" src="error-logger.js"></script>
+<script type="module">
+import { db, auth } from './firebase-config.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getAllAds, getReviews, getAdStats, getUserRole, findUser } from './api.js';
+import { escapeHtml, timeAgo, formatPrice } from './utils.js';
+
+const CATEGORY_COLORS = {
+    cars: '#ff6b6b', houses: '#4ecdc4', garages: '#45b7d1',
+    business: '#f9ca24', accessories: '#a55eea', skins: '#26de81', other: '#778ca3'
+};
+const CATEGORY_NAMES = {
+    cars: 'Машина', houses: 'Дом', garages: 'Гараж',
+    business: 'Бизнес', accessories: 'Аксессуар', skins: 'Скин', other: 'Разное'
+};
+const ROLE_LABELS = {
+    owner: { text: 'Владелец', cls: 'owner' },
+    admin: { text: 'Администратор', cls: 'admin' },
+    moder: { text: 'Модератор', cls: 'moder' }
+};
+const SERVER_COLORS = {
+    RED:'#ff2b2b', GREEN:'#2bff4a', BLUE:'#2b6bff', YELLOW:'#ffe600',
+    ORANGE:'#ff8c1a', PURPLE:'#a64dff', LIME:'#9dff00', PINK:'#ff4fd8',
+    CHERRY:'#b3003b', BLACK:'#888', INDIGO:'#4b0082', WHITE:'#ddd',
+    MAGENTA:'#ff00ff', CRIMSON:'#dc143c', GOLD:'#ffd700', AZURE:'#007fff',
+    PLATINUM:'#e5e4e2', AQUA:'#00ffff', GRAY:'#808080', ICE:'#b3f0ff',
+    CHILLI:'#ff3c00', CHOCO:'#5a2d0c', MOSCOW:'#c70000', SPB:'#005eff'
+};
+
+const BADGES_CONFIG = {
+    zbt_member:    { icon: '🔥', label: 'Участник ЗБТ',        desc: 'Принял участие в закрытом бета-тестировании Black Market', rarity: 'rare',      color: '#ff6b35' },
+    first_100:     { icon: '⚡', label: 'Первые 100',           desc: 'Вошёл в первые 100 пользователей платформы',              rarity: 'legendary', color: '#ffd700' },
+    founder:       { icon: '👑', label: 'Основатель',           desc: 'Один из основателей сообщества Black Market',             rarity: 'legendary', color: '#ffd700' },
+    administrator: { icon: '🛡️', label: 'Администратор',        desc: 'Администратор проекта Black Market',                      rarity: 'special',   color: '#e05fff' },
+    moderator:     { icon: '🔨', label: 'Модератор',            desc: 'Модератор платформы Black Market',                        rarity: 'special',   color: '#5b9dff' },
+    veteran:       { icon: '⭐', label: 'Ветеран Black Market',  desc: 'Долгожитель платформы',                                   rarity: 'rare',      color: '#a8e063' },
+    verified:      { icon: '🛡️', label: 'Проверенный продавец', desc: 'Подтверждённый надёжный продавец',                        rarity: 'uncommon',  color: '#4ecdc4' },
+    trusted:       { icon: '💎', label: 'Надёжный продавец',    desc: 'Высокий рейтинг и много положительных отзывов',           rarity: 'rare',      color: '#74b9ff' },
+    top_seller:    { icon: '🏆', label: 'Топ продавец месяца',  desc: 'Лучший продавец по итогам месяца',                        rarity: 'legendary', color: '#ffd700' },
+    bug_hunter:    { icon: '🐞', label: 'Охотник за багами',    desc: 'Нашёл и сообщил о важном баге',                           rarity: 'uncommon',  color: '#ff7675' },
+    active_tester: { icon: '🏅', label: 'Активный тестер',      desc: 'Активно участвовал в тестировании платформы',             rarity: 'uncommon',  color: '#fdcb6e' },
+    zbt_legend:    { icon: '🏆', label: 'Легенда ЗБТ',          desc: 'Внёс выдающийся вклад в развитие проекта во время ЗБТ',  rarity: 'legendary', color: '#ffd700' },
+    early_bird:    { icon: '🚀', label: 'Ранний сторонник',     desc: 'Поддержал проект на самом раннем этапе',                  rarity: 'rare',      color: '#a29bfe' },
+};
+const RARITY_LABELS = {
+    uncommon:  { label: 'Необычный',   color: '#4ecdc4' },
+    rare:      { label: 'Редкий',      color: '#74b9ff' },
+    legendary: { label: 'Легендарный', color: '#ffd700' },
+    special:   { label: 'Особый',      color: '#e05fff' },
+};
+
+function renderUserBadges(badges, size = 'md') {
+    if (!badges || badges.length === 0) return '';
+    const fontSize = size === 'sm' ? '12px' : '13px';
+    const padding  = size === 'sm' ? '2px 7px' : '4px 12px';
+    return badges.map(key => {
+        const cfg = BADGES_CONFIG[key];
+        if (!cfg) return '';
+        const isLegendary = cfg.rarity === 'legendary';
+        const borderStyle = isLegendary
+            ? `border:1px solid ${cfg.color}80;box-shadow:0 0 6px ${cfg.color}40;`
+            : `border:1px solid ${cfg.color}50;`;
+        return `<span style="
+            display:inline-flex;align-items:center;gap:4px;
+            background:${cfg.color}18;color:${cfg.color};
+            ${borderStyle}
+            border-radius:20px;padding:${padding};
+            font-size:${fontSize};font-weight:600;
+            cursor:default;white-space:nowrap;
+        " title="${cfg.label}\n${cfg.desc}">${cfg.icon} ${cfg.label}</span>`;
+    }).join('');
+}
+
+// Получаем никнейм из URL
+const params = new URLSearchParams(window.location.search);
+const nickname = params.get('user');
+
+if (!nickname) {
+    window.location.href = 'index.html';
+}
+
+document.title = `${nickname} — Black Market`;
+
+let currentUser = null;
+
+// Ждём Auth
+onAuthStateChanged(auth, (u) => {
+    if (u) {
+        currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    }
+    loadProfile();
+});
+
+async function loadProfile() {
+    try {
+        // Параллельно грузим всё
+        const [userData, allAds, reviews, role] = await Promise.all([
+            findUser(nickname),
+            getAllAds(),
+            getReviews(nickname),
+            getUserRole(nickname)
+        ]);
+
+        const userAds = allAds.filter(a => a.author === nickname);
+
+        // Статистика просмотров/избранного
+        let totalViews = 0, totalFavs = 0;
+        const statsArr = await Promise.all(
+            userAds.map(ad => getAdStats(ad.id).catch(() => null))
+        );
+        statsArr.forEach(st => {
+            if (st) {
+                totalViews += st.totalViews || 0;
+                totalFavs  += st.favoritesCount || 0;
+            }
+        });
+
+        renderHero(userData, reviews, role);
+        renderStats(userAds.length, totalViews, totalFavs, reviews);
+        renderAds(userAds);
+        renderReviews(reviews);
+
+    } catch (e) {
+        console.error('Ошибка загрузки профиля:', e);
+        document.getElementById('heroName').textContent = 'Ошибка загрузки';
+    }
+}
+
+function renderHero(userData, reviews, role) {
+    // Аватар
+    const avatarEl = document.getElementById('heroAvatar');
+    const avatar = userData?.avatar || localStorage.getItem(`avatar_${nickname}`);
+    if (avatar) {
+        avatarEl.innerHTML = `<img src="${avatar}" alt="avatar">`;
+    } else {
+        avatarEl.textContent = nickname.charAt(0).toUpperCase();
+    }
+
+    // Имя
+    document.getElementById('heroName').textContent = nickname;
+
+    // Плашки роли и сервера
+    const badgesEl = document.getElementById('heroBadges');
+    let badgesHtml = '';
+    if (role && ROLE_LABELS[role]) {
+        const r = ROLE_LABELS[role];
+        badgesHtml += `<span class="role-badge ${r.cls}">${r.text}</span>`;
+    }
+    if (userData?.server) {
+        const color = SERVER_COLORS[userData.server.toUpperCase()] || '#888';
+        badgesHtml += `<span class="server-badge" style="color:#fff;border-color:${color}50;background:${color}20;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${userData.server.toUpperCase()}</span>`;
+    }
+    // Бейджи достижений рядом с ником
+    if (userData?.badges?.length) {
+        window._profileBadges = userData.badges;
+        badgesHtml += renderUserBadges(userData.badges, 'sm');
+    } else {
+        window._profileBadges = [];
+    }
+    badgesEl.innerHTML = badgesHtml;
+
+    // Рейтинг
+    const ratingEl = document.getElementById('heroRating');
+    if (reviews.length > 0) {
+        const avg = (reviews.reduce((s, r) => s + (r.rating || 5), 0) / reviews.length).toFixed(1);
+        const fullStars = Math.round(avg);
+        const stars = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
+        ratingEl.innerHTML = `
+            <span class="profile-hero-stars">${stars}</span>
+            <span class="profile-hero-rating-val">${avg}</span>
+            <span>· ${reviews.length} отзывов</span>
+        `;
+    } else {
+        ratingEl.innerHTML = '<span style="color:#555">Нет отзывов</span>';
+    }
+
+    // Дата регистрации
+    if (userData?.createdAt) {
+        const date = new Date(userData.createdAt);
+        document.getElementById('heroSince').textContent =
+            `На сайте с ${date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`;
+    }
+
+    // Кнопка написать — только если это не свой профиль
+    const actionsEl = document.getElementById('heroActions');
+    if (currentUser && currentUser.nickname !== nickname) {
+        actionsEl.innerHTML = `
+            <button class="profile-write-btn" onclick="startChatWithUser()">
+                💬 Написать
+            </button>
+        `;
+    }
+}
+
+function renderStats(adsCount, views, favs, reviews) {
+    document.getElementById('statAds').textContent   = adsCount;
+    document.getElementById('statViews').textContent = views;
+    document.getElementById('statFavs').textContent  = favs;
+
+    if (reviews.length > 0) {
+        const avg = (reviews.reduce((s, r) => s + (r.rating || 5), 0) / reviews.length).toFixed(1);
+        document.getElementById('statRating').textContent = avg;
+    } else {
+        document.getElementById('statRating').textContent = '—';
+    }
+}
+
+function renderAds(ads) {
+    const el = document.getElementById('tabAds');
+    if (ads.length === 0) {
+        el.innerHTML = `
+            <div class="profile-empty">
+                <div class="profile-empty-icon">📋</div>
+                <div class="profile-empty-text">Нет активных объявлений</div>
+            </div>`;
+        return;
+    }
+
+    el.innerHTML = ads.map(ad => {
+        const color = CATEGORY_COLORS[ad.category] || '#888';
+        const catName = CATEGORY_NAMES[ad.category] || ad.category;
+        const thumb = ad.photos?.[0]
+            ? `<img src="${ad.photos[0]}" alt="">`
+            : getCatEmoji(ad.category);
+
+        return `
+        <div class="profile-ad-row" onclick="openAd(${ad.id})">
+            <div class="profile-ad-thumb">${thumb}</div>
+            <div class="profile-ad-body">
+                <span class="profile-ad-cat" style="background:${color}20;color:${color};border:1px solid ${color}40;">${escapeHtml(catName)}</span>
+                <div class="profile-ad-title">${escapeHtml(ad.title)}</div>
+                <div class="profile-ad-price">${formatPrice(ad.price)}</div>
+                <div class="profile-ad-date">${timeAgo(ad.createdAt)}</div>
+            </div>
+            <div class="profile-ad-arrow">›</div>
+        </div>`;
+    }).join('');
+}
+
+function renderReviews(reviews) {
+    const el = document.getElementById('tabReviews');
+    if (reviews.length === 0) {
+        el.innerHTML = `
+            <div class="profile-empty">
+                <div class="profile-empty-icon">⭐</div>
+                <div class="profile-empty-text">Отзывов пока нет</div>
+            </div>`;
+        return;
+    }
+
+    el.innerHTML = reviews.map(r => {
+        const stars = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
+        return `
+        <div class="profile-review">
+            <div class="profile-review-head">
+                <div class="profile-review-author">
+                    <span class="profile-review-stars">${stars}</span>
+                    ${escapeHtml(r.author)}
+                </div>
+                <div class="profile-review-date">${timeAgo(r.createdAt || r.date)}</div>
+            </div>
+            <div class="profile-review-text">${escapeHtml(r.text || '')}</div>
+        </div>`;
+    }).join('');
+}
+
+function getCatEmoji(cat) {
+    const emojis = { cars:'🚗', houses:'🏠', garages:'🅿️', business:'🏢', accessories:'💎', skins:'👕', other:'📦' };
+    return emojis[cat] || '📋';
+}
+
+// Открыть объявление — переход на главную с открытой модалкой
+window.openAd = function(adId) {
+    window.location.href = `index.html?openAd=${adId}`;
+};
+
+// Написать пользователю
+window.startChatWithUser = async function() {
+    try {
+        const { createChat } = await import('./chat.js');
+        const chatId = await createChat(nickname, null, null);
+        if (chatId) window.location.href = `chat.html?chatId=${chatId}`;
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+// Переключение табов
+window.switchTab = function(tab, btn) {
+    document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tabAds').style.display          = tab === 'ads'          ? 'block' : 'none';
+    document.getElementById('tabReviews').style.display      = tab === 'reviews'      ? 'block' : 'none';
+    document.getElementById('tabAchievements').style.display = tab === 'achievements' ? 'block' : 'none';
+
+    if (tab === 'achievements') renderAchievementsTab();
+};
+
+function renderAchievementsTab() {
+    const el = document.getElementById('tabAchievements');
+    // userData доступна в замыкании из loadProfile
+    const badges = window._profileBadges || [];
+    const allKeys = Object.keys(BADGES_CONFIG);
+
+    if (badges.length === 0) {
+        el.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:#555;">
+                <div style="font-size:40px;margin-bottom:12px;">🏅</div>
+                <div style="font-size:15px;">Достижений пока нет</div>
+                <div style="font-size:13px;margin-top:6px;color:#444;">Участвуй в ЗБТ и помогай проекту!</div>
+            </div>`;
+        return;
+    }
+
+    // Группируем по редкости
+    const groups = [
+        { rarity: 'legendary', label: '🏆 Легендарные' },
+        { rarity: 'special',   label: '✨ Особые' },
+        { rarity: 'rare',      label: '💎 Редкие' },
+        { rarity: 'uncommon',  label: '🔹 Необычные' },
+    ];
+
+    let html = `<div style="padding:4px 0;">`;
+    for (const group of groups) {
+        const groupBadges = badges.filter(k => BADGES_CONFIG[k]?.rarity === group.rarity);
+        if (!groupBadges.length) continue;
+
+        html += `<div style="margin-bottom:20px;">
+            <div style="font-size:13px;color:#555;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">${group.label}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+
+        for (const key of groupBadges) {
+            const cfg = BADGES_CONFIG[key];
+            const rarity = RARITY_LABELS[cfg.rarity];
+            const isLegendary = cfg.rarity === 'legendary';
+            html += `
+                <div style="
+                    background:${cfg.color}12;
+                    border:1px solid ${cfg.color}${isLegendary ? '80' : '40'};
+                    ${isLegendary ? `box-shadow:0 0 10px ${cfg.color}30;` : ''}
+                    border-radius:14px;
+                    padding:14px 16px;
+                    min-width:140px;
+                    max-width:200px;
+                ">
+                    <div style="font-size:26px;margin-bottom:6px;">${cfg.icon}</div>
+                    <div style="color:${cfg.color};font-size:14px;font-weight:600;margin-bottom:4px;">${cfg.label}</div>
+                    <div style="color:#555;font-size:12px;line-height:1.4;">${cfg.desc}</div>
+                    <div style="margin-top:8px;">
+                        <span style="font-size:11px;color:${rarity.color};background:${rarity.color}18;border:1px solid ${rarity.color}40;border-radius:20px;padding:2px 8px;">${rarity.label}</span>
+                    </div>
+                </div>`;
+        }
+        html += `</div></div>`;
+    }
+
+    html += `<div style="color:#333;font-size:12px;text-align:center;padding:8px 0 4px;">${badges.length} из ${allKeys.length} достижений</div>`;
+    html += `</div>`;
+    el.innerHTML = html;
+}
+</script>
+</body>
+</html>

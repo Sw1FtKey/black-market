@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать объявление — Black Market</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="create-ad-body" style="overflow-x:hidden;">
+
+<!-- Кнопка назад -->
+<a href="index.html" class="back-button">← Назад</a>
+
+<div class="create-ad-container">
+    <h1 class="create-ad-title">Создать объявление</h1>
+
+    <form id="createAdForm" class="create-ad-form">
+        
+        <!-- Категория -->
+        <div class="form-group">
+            <label>Категория</label>
+            <select id="adCategory" required>
+                <option value="">Выберите категорию</option>
+                <option value="cars">Машины</option>
+                <option value="houses">Дома</option>
+                <option value="garages">Гаражи</option>
+                <option value="business">Бизнесы</option>
+                <option value="accessories">Аксессуары</option>
+                <option value="skins">Скины</option>
+                <option value="other">Разное</option>
+            </select>
+        </div>
+
+        <!-- Название / Марка ТС -->
+        <div class="form-group" id="titleGroup">
+            <label>Название</label>
+            <input type="text" id="adTitle" placeholder="Без продам! " required>
+        </div>
+        <!-- Выбор марки (только для категории cars) -->
+        <div class="form-group hidden" id="carModelGroup">
+            <label>Марка и модель ТС</label>
+            <div style="position:relative;">
+                <input type="text" id="carModelSearch" placeholder="Поиск: BMW, Toyota, Lada..." autocomplete="off"
+                    style="width:100%;padding-right:36px;box-sizing:border-box;"
+                    oninput="filterCarModels(this.value)">
+                <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#888;z-index:1;">🔍</span>
+                <div id="carModelDropdown" class="car-model-dropdown hidden"></div>
+            </div>
+            <input type="hidden" id="carModelValue">
+            <div id="carModelSelected" class="car-model-selected hidden"></div>
+        </div>
+
+        <!-- Цена -->
+        <div class="form-group">
+            <label>Цена (₽)</label>
+            <input type="number" id="adPrice" placeholder="500000" required>
+        </div>
+
+        <!-- Описание -->
+        <div class="form-group">
+            <label>Описание</label>
+            <textarea id="adDescription" rows="4" placeholder="Опишите товар подробнее..."></textarea>
+        </div>
+        <!-- ===== ФОТОГРАФИИ ===== -->
+<div class="form-group">
+    <label>Фотографии (макс. 5)</label>
+    <div class="photo-upload-container">
+        <input type="file" id="adPhotos" accept="image/*" multiple style="display: none;">
+        <button type="button" class="upload-btn" onclick="document.getElementById('adPhotos').click()">
+            📷 Выбрать фото
+        </button>
+        <div class="photo-preview-grid" id="photoPreview"></div>
+        <p class="photo-hint">Нажмите на фото, чтобы удалить</p>
+    </div>
+</div>
+
+        <!-- ===== Дополнительные поля для машин ===== -->
+        <div id="carFields" class="extra-fields hidden">
+
+            <!-- Пробег + Прошивка -->
+            <div class="car-row-2">
+                <div class="form-group">
+                    <label>Пробег</label>
+                    <select id="carMileage">
+                        <option value="">Выберите</option>
+                        <option value="0-10">До 10 000 км</option>
+                        <option value="10-50">10 — 50 тыс. км</option>
+                        <option value="50-100">50 — 100 тыс. км</option>
+                        <option value="100+">Более 100 тыс. км</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Прошивка</label>
+                    <select id="carFirmware">
+                        <option value="">Выберите</option>
+                        <option value="stock">Сток</option>
+                        <option value="drift">Дрифт</option>
+                        <option value="comfort+">Комфорт+</option>
+                        <option value="sport">Спорт</option>
+                        <option value="sport+">Спорт+</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Свет -->
+            <div class="form-group">
+                <label>Свет</label>
+                <div class="toggle-group">
+                    <button type="button" class="toggle-btn" data-group="lights" data-value="underglow" onclick="toggleCarBtn(this)">
+                        💡 Подсветка
+                    </button>
+                    <button type="button" class="toggle-btn" data-group="lights" data-value="highbeam" onclick="toggleCarBtn(this)">
+                        🔆 Дальний свет
+                    </button>
+                    <button type="button" class="toggle-btn" data-group="lights" data-value="strobe" onclick="toggleCarBtn(this)">
+                        🔴 Стробоскопы
+                    </button>
+                </div>
+                <!-- Скрытые поля для совместимости -->
+                <input type="hidden" id="hasUnderglow" value="false">
+                <input type="hidden" id="hasHighBeam" value="false">
+                <input type="hidden" id="hasStrobe" value="false">
+                <div id="underglowOptions" class="car-sub-options hidden">
+                    <label class="sub-label">Позиции подсветки:</label>
+                    <div class="toggle-group">
+                        <button type="button" class="toggle-btn small" data-group="underglow" data-value="bottom" onclick="toggleCarBtn(this)">Нижняя</button>
+                        <button type="button" class="toggle-btn small" data-group="underglow" data-value="left" onclick="toggleCarBtn(this)">Левая</button>
+                        <button type="button" class="toggle-btn small" data-group="underglow" data-value="right" onclick="toggleCarBtn(this)">Правая</button>
+                    </div>
+                </div>
+                <div id="strobeOptions" class="car-sub-options hidden">
+                    <label class="sub-label">Тип стробоскопов:</label>
+                    <div class="toggle-group">
+                        <button type="button" class="toggle-btn small single" data-group="strobe-type" data-value="donate" onclick="selectCarBtn(this)">Донатные</button>
+                        <button type="button" class="toggle-btn small single" data-group="strobe-type" data-value="regular" onclick="selectCarBtn(this)">Обычные</button>
+                    </div>
+                    <input type="hidden" id="strobeTypeHidden" value="">
+                </div>
+            </div>
+
+            <!-- Подвеска -->
+            <div class="form-group">
+                <label>Подвеска</label>
+                <div class="toggle-group">
+                    <button type="button" class="toggle-btn" data-group="suspension" data-value="hydraulic" onclick="toggleCarBtn(this)">
+                        🔧 Гидравлика
+                    </button>
+                    <button type="button" class="toggle-btn" data-group="suspension" data-value="pneumatic" onclick="toggleCarBtn(this)">
+                        💨 Пневма
+                    </button>
+                </div>
+            </div>
+
+            <!-- Опции есть/нет -->
+            <div class="form-group">
+                <label>Дополнительно</label>
+                <div class="yes-no-grid">
+                    <div class="yes-no-item">
+                        <span class="yes-no-label">Шинка</span>
+                        <div class="yes-no-btns">
+                            <button type="button" class="yn-btn" data-field="carTires" data-value="yes" onclick="selectYesNo(this)">Есть</button>
+                            <button type="button" class="yn-btn" data-field="carTires" data-value="no" onclick="selectYesNo(this)">Нет</button>
+                        </div>
+                        <input type="hidden" id="carTires" value="">
+                    </div>
+                    <div class="yes-no-item">
+                        <span class="yes-no-label">Клиренс</span>
+                        <div class="yes-no-btns">
+                            <button type="button" class="yn-btn" data-field="carClearance" data-value="yes" onclick="selectYesNo(this)">Есть</button>
+                            <button type="button" class="yn-btn" data-field="carClearance" data-value="no" onclick="selectYesNo(this)">Нет</button>
+                        </div>
+                        <input type="hidden" id="carClearance" value="">
+                    </div>
+                    <div class="yes-no-item">
+                        <span class="yes-no-label">Лаунч</span>
+                        <div class="yes-no-btns">
+                            <button type="button" class="yn-btn" data-field="carLaunch" data-value="yes" onclick="selectYesNo(this)">Есть</button>
+                            <button type="button" class="yn-btn" data-field="carLaunch" data-value="no" onclick="selectYesNo(this)">Нет</button>
+                        </div>
+                        <input type="hidden" id="carLaunch" value="">
+                    </div>
+                    <div class="yes-no-item">
+                        <span class="yes-no-label">ПДВ</span>
+                        <div class="yes-no-btns">
+                            <button type="button" class="yn-btn" data-field="carPDV" data-value="yes" onclick="selectYesNo(this)">Есть</button>
+                            <button type="button" class="yn-btn" data-field="carPDV" data-value="no" onclick="selectYesNo(this)">Нет</button>
+                        </div>
+                        <input type="hidden" id="carPDV" value="">
+                    </div>
+                    <div class="yes-no-item">
+                        <span class="yes-no-label">Антирадар</span>
+                        <div class="yes-no-btns">
+                            <button type="button" class="yn-btn" data-field="carAntiradar" data-value="yes" onclick="selectYesNo(this)">Есть</button>
+                            <button type="button" class="yn-btn" data-field="carAntiradar" data-value="no" onclick="selectYesNo(this)">Нет</button>
+                        </div>
+                        <input type="hidden" id="carAntiradar" value="">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ===== Дополнительные поля для домов ===== -->
+        <div id="houseFields" class="extra-fields hidden">
+            
+            <div class="form-group">
+                <label>Расположение</label>
+                <select id="houseLocation">
+                    <option value="">Выберите расположение</option>
+                    <option value="Арзамас">Арзамас</option>
+                    <option value="Батырево">Батырево</option>
+                    <option value="Лыткарино">Лыткарино</option>
+                    <option value="Южный">Южный</option>
+                    <option value="Нижегородск">Нижегородск</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Улучшения дома</label>
+                <select id="houseUpgrades">
+                    <option value="">Выберите уровень</option>
+                    <option value="1/5">1/5</option>
+                    <option value="2/5">2/5</option>
+                    <option value="3/5">3/5</option>
+                    <option value="4/5">4/5</option>
+                    <option value="5/5">5/5</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Улучшения подвала</label>
+                <select id="houseBasement">
+                    <option value="">Выберите уровень</option>
+                    <option value="1/5">1/5</option>
+                    <option value="2/5">2/5</option>
+                    <option value="3/5">3/5</option>
+                    <option value="4/5">4/5</option>
+                    <option value="5/5">5/5</option>
+                </select>
+            </div>
+
+        </div>
+
+        <!-- ===== Дополнительные поля для гаражей ===== -->
+        <div id="garageFields" class="extra-fields hidden">
+            
+            <div class="form-group">
+                <label>Расположение</label>
+                <select id="garageLocation">
+                    <option value="">Выберите расположение</option>
+                    <option value="Арзамас">Арзамас</option>
+                    <option value="Батырево">Батырево</option>
+                    <option value="Лыткарино">Лыткарино</option>
+                    <option value="Южный">Южный</option>
+                    <option value="Нижегородск">Нижегородск</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Улучшения</label>
+                <select id="garageUpgrades">
+                    <option value="">Выберите уровень</option>
+                    <option value="1/5">1/5</option>
+                    <option value="2/5">2/5</option>
+                    <option value="3/5">3/5</option>
+                    <option value="4/5">4/5</option>
+                    <option value="5/5">5/5</option>
+                </select>
+            </div>
+
+        </div>
+
+        <!-- ===== Дополнительные поля для бизнесов ===== -->
+        <div id="businessFields" class="extra-fields hidden">
+            
+            <div class="form-group">
+                <label>Категория бизнеса</label>
+                <select id="businessCategory">
+                    <option value="">Выберите категорию</option>
+                    <option value="247">Магазин 24/7</option>
+                    <option value="gas">АЗС</option>
+                    <option value="sk">СК</option>
+                    <option value="tk">ТК</option>
+                    <option value="ammo">Амуниция</option>
+                    <option value="accessories">Аксессуары</option>
+                    <option value="clothes">Одежда</option>
+                    <option value="workshop">Мастерская</option>
+                    <option value="pvz">ПВЗ</option>
+                    <option value="fishing">Рыболовный магазин</option>
+                    <option value="sto">СТО</option>
+                    <option value="techcenter">Тех. центр</option>
+                    <option value="snackbar">Закусочная</option>
+                    <option value="club">Клуб</option>
+                    <option value="taxi">Такси</option>
+                    <option value="styling">Стайлинг центр</option>
+                    <option value="tireshop">Шиномонтаж</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Расположение</label>
+                <select id="businessLocation">
+                    <option value="">Выберите расположение</option>
+                    <option value="Арзамас">Арзамас</option>
+                    <option value="Батырево">Батырево</option>
+                    <option value="Лыткарино">Лыткарино</option>
+                    <option value="Южный">Южный</option>
+                    <option value="Нижегородск">Нижегородск</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Финансовая статистика (₽/день)</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="businessIncomeFrom" placeholder="От" style="flex: 1;">
+                    <span style="color: #888;">—</span>
+                    <input type="number" id="businessIncomeTo" placeholder="До" style="flex: 1;">
+                </div>
+                <p class="input-hint">Примерный доход в день</p>
+            </div>
+
+        </div>
+
+        <!-- Контакты -->
+<div class="form-group">
+    <label>Telegram для связи</label>
+    <div class="telegram-input-wrapper">
+        <span class="telegram-prefix">@</span>
+        <input type="text" id="adContact" placeholder="username">
+    </div>
+    <p class="input-hint">Без @ в начале, только никнейм</p>
+</div>
+
+        <!-- Кнопка создания -->
+        <button type="submit" class="submit-ad-btn">Опубликовать</button>
+    </form>
+</div>
+
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="create-ad.js"></script>
+
+<script>
+// ===== БАЗА ТРАНСПОРТНЫХ СРЕДСТВ =====
+const VEHICLES_DB = {"low": ["ZAZ 968", "VAZ 1111", "VAZ 2101", "GAZ Volga 2410", "VAZ 2106", "Volkswagen Golf GTI 2", "ВАЗ 2107", "ВАЗ 21099", "VAZ 2108", "VAZ 2109", "VAZ 2110", "VAZ 2114", "VAZ 2112", "VAZ 2115", "Volvo 242DL", "VAZ 2170", "BMW M3 E30", "Niva Urban", "UAZ Hunter", "Lada Granta", "Mazda Sedan 3", "Toyota Mark 2", "Mercedes-Benz W124", "Jeep Grand Cherokee", "Audi 100 C4", "ЛуАЗ 969", "BMW M3 E36", "Mercedes-Benz E420 W210", "Lada Vesta Sedan", "Audi A6 C5"], "mid": ["BMW M5 E34", "Nissan Skyline R34", "Lada Vesta SW Cross", "Renault Logan", "Audi A4", "Opel Astra H OPC", "Kia Rio", "BMW M5 E39", "Hyundai Solaris 2021", "Volkswagen Polo", "Skoda Rapid 2020", "Mercedes-Benz S600 W140", "Ford Focus 3 Sedan", "BMW 7-Series E38", "BMW M3 E46", "Honda Civic IIX", "Acura TSX", "UAZ Patriot", "UAZ Patriot Pickup", "Mercedes-Benz W211", "Volkswagen Golf GTI", "Toyota Chaser Tourer V JZX100", "BMW X5 E53", "Toyota Prius 2018", "Toyota Camry XV55", "Nissan Qashqai", "Nissan Silvia S15", "Ford Focus RS", "Mitsubishi Lancer Evo X", "BMW M5 E60", "Subaru WRX STI", "Geely Emgrand 7", "Toyota Camry 3.5", "Kia K5", "Skoda Octavia A7", "Haval F7X", "Ford Mustang GT", "Toyota Supra A80", "Mercedes-Benz A45 AMG", "Mini Cooper", "Volkswagen Passat 2021", "Alfa Romeo Guilia", "Subaru Levorg", "Infinity Q60S", "BMW X5M E70", "Land Rover Range Rover III", "Lexus RCF", "Volvo V60", "Infinity FX50S", "Xpeng P7", "Nissan Pathfinder 2022"], "high": ["Volvo XC90", "Chevrolet Camaro ZL1", "BMW 3-Series G20", "BMW Z4 M40i", "Dodge Charger SRT", "BMW M5 F10", "Ford Mustang Mach E", "Jeep Wrangler", "BMW M4 F84", "Ford Raptor F-150", "Toyota Supra A90", "Audi Q8", "Dodge Demon SRT", "Mercedes-Benz C63s AMG", "Lincoln Navigator", "Mercedes-Benz GT63s", "Audi Q7", "Audi S5 Coupe 2020", "Cadillac Escalade IV", "Mercedes-Benz E63 W212", "BMW M4 G82", "Toyota Land Cruiser 200", "Nissan GT-R", "BMW X6M F16", "Porsche Panamera S", "Audi RS6", "ЗИЛ 4104", "BMW M6 F12", "Chevrolet Tahoe RST", "Porsche 911 Carrera S", "Mercedes-Benz GLS 400", "Volkswagen Touareg 2022", "BMW M5 F90", "Audi RS7 Sport", "Range Rover SVR", "Audi RS6 C7 Рестайлинг", "Mercedes-Benz CLS63 AMG", "BMW X7 M50i", "Audi R8 V10", "Lexus LX570", "Cadillac Escalade (новый)", "Mercedes-Benz E63S", "BMW I8 Roadster", "BMW X5M G05", "Mercedes-Benz GT-R", "McLaren 600LT", "BMW 7-Series 750Li", "Porsche Cayenne S", "Audi RS6 C8", "Tesla Model S", "Range Rover Velar", "Lamborghini Urus", "Lamborghini Huracan", "Chevrolette Corvette C8", "Audi A8 2022", "Mercedes-Benz G65 AMG", "BMW M8 F92", "Ferrari 488 GTB", "Porsche Taycan Turbo S", "Aston Martin DB11", "BMW M8 F93 Gran Coupe", "Lamborghini Aventador S", "Tesla Model X", "Mercedes-Benz G63 AMG", "Mercedes-Benz EQS580", "Mercedes-Benz MB S650", "Ferrari 488 Pista", "Aurus Senat", "Rolls-Royce Wraith", "Rolls-Royce Cullinan", "Mercedes-Benz G63 AMG Brabus", "Rolls-Royce Phantom", "Bentley Continental GT", "BMW M1", "Bentley Mulliner Bacalar", "Bugatti Chiron", "Bugatti Divo", "Bugatti La Noire"], "trucks": ["DAF XF16 Euro 6", "Renault Premium", "Mercedes-Benz Sprinter", "Gazelle 3221", "Ford Transit 2020", "Opel Vivaro 2022", "Volkswagen Multivan T6", "Mercedes-Benz Sprinter 319CDI", "Mercedes-Benz V-Class W447", "Peterbilt Model 579"], "moto": ["Racer Sport", "Aprilla MXV 450", "Минск 125", "Ducati SuperSport S", "Ducati XDiavel S", "Yamaha FZ-10", "Yamaha YZF-R6", "BMW S 1000 RR", "Suzuki GSX-R750", "Kawasaki Ninja H2R"], "yachts": ["Гидроцикл", "Моторная лодка", "Speedy Yacht", "Marine Yacht", "Sea Yacht", "Ocean Yacht"], "unique": ["UAZ 452 Бравый", "Вездеход Монстр", "Niva 4x4 Storm", "Ford 1933 HotRod", "Lykan HyperSport", "Hummer Humvee", "Subaru BRZ", "Dodge RAM", "Porsche 911 Singer", "Lamborghini Gallardo", "Lotus Exige Halloween", "Jaguar XK120", "Mercedes-Benz 300SL Coupe", "ВАЗ 2170 ППС", "ГАЗ Тигр", "Mercedes-Benz Sprinter СМП", "Volkswagen Polo ППС", "BMW M5 F90 ППС", "Volkswagen Station Delux", "Raesr Tachyon Бэд-Мобиль", "Morris Minor Новогодний", "Mercury Coupe Новогодний"]};
+const ALL_VEHICLES = ["Acura TSX", "Alfa Romeo Guilia", "Aprilla MXV 450", "Aston Martin DB11", "Audi 100 C4", "Audi A4", "Audi A6 C5", "Audi A8 2022", "Audi Q7", "Audi Q8", "Audi R8 V10", "Audi RS6", "Audi RS6 C7 Рестайлинг", "Audi RS6 C8", "Audi RS7 Sport", "Audi S5 Coupe 2020", "Aurus Senat", "Bentley Continental GT", "Bentley Mulliner Bacalar", "BMW 3-Series G20", "BMW 7-Series 750Li", "BMW 7-Series E38", "BMW I8 Roadster", "BMW M1", "BMW M3 E30", "BMW M3 E36", "BMW M3 E46", "BMW M4 F84", "BMW M4 G82", "BMW M5 E34", "BMW M5 E39", "BMW M5 E60", "BMW M5 F10", "BMW M5 F90", "BMW M5 F90 ППС", "BMW M6 F12", "BMW M8 F92", "BMW M8 F93 Gran Coupe", "BMW S 1000 RR", "BMW X5 E53", "BMW X5M E70", "BMW X5M G05", "BMW X6M F16", "BMW X7 M50i", "BMW Z4 M40i", "Bugatti Chiron", "Bugatti Divo", "Bugatti La Noire", "Cadillac Escalade (новый)", "Cadillac Escalade IV", "Chevrolet Camaro ZL1", "Chevrolet Tahoe RST", "Chevrolette Corvette C8", "DAF XF16 Euro 6", "Dodge Charger SRT", "Dodge Demon SRT", "Dodge RAM", "Ducati SuperSport S", "Ducati XDiavel S", "Ferrari 488 GTB", "Ferrari 488 Pista", "Ford 1933 HotRod", "Ford Focus 3 Sedan", "Ford Focus RS", "Ford Mustang GT", "Ford Mustang Mach E", "Ford Raptor F-150", "Ford Transit 2020", "GAZ Volga 2410", "Gazelle 3221", "Geely Emgrand 7", "Haval F7X", "Honda Civic IIX", "Hummer Humvee", "Hyundai Solaris 2021", "Infinity FX50S", "Infinity Q60S", "Jaguar XK120", "Jeep Grand Cherokee", "Jeep Wrangler", "Kawasaki Ninja H2R", "Kia K5", "Kia Rio", "Lada Granta", "Lada Vesta Sedan", "Lada Vesta SW Cross", "Lamborghini Aventador S", "Lamborghini Gallardo", "Lamborghini Huracan", "Lamborghini Urus", "Land Rover Range Rover III", "Lexus LX570", "Lexus RCF", "Lincoln Navigator", "Lotus Exige Halloween", "Lykan HyperSport", "Marine Yacht", "Mazda Sedan 3", "McLaren 600LT", "Mercedes-Benz 300SL Coupe", "Mercedes-Benz A45 AMG", "Mercedes-Benz C63s AMG", "Mercedes-Benz CLS63 AMG", "Mercedes-Benz E420 W210", "Mercedes-Benz E63 W212", "Mercedes-Benz E63S", "Mercedes-Benz EQS580", "Mercedes-Benz G63 AMG", "Mercedes-Benz G63 AMG Brabus", "Mercedes-Benz G65 AMG", "Mercedes-Benz GLS 400", "Mercedes-Benz GT-R", "Mercedes-Benz GT63s", "Mercedes-Benz MB S650", "Mercedes-Benz S600 W140", "Mercedes-Benz Sprinter", "Mercedes-Benz Sprinter 319CDI", "Mercedes-Benz Sprinter СМП", "Mercedes-Benz V-Class W447", "Mercedes-Benz W124", "Mercedes-Benz W211", "Mercury Coupe Новогодний", "Mini Cooper", "Mitsubishi Lancer Evo X", "Morris Minor Новогодний", "Nissan GT-R", "Nissan Pathfinder 2022", "Nissan Qashqai", "Nissan Silvia S15", "Nissan Skyline R34", "Niva 4x4 Storm", "Niva Urban", "Ocean Yacht", "Opel Astra H OPC", "Opel Vivaro 2022", "Peterbilt Model 579", "Porsche 911 Carrera S", "Porsche 911 Singer", "Porsche Cayenne S", "Porsche Panamera S", "Porsche Taycan Turbo S", "Racer Sport", "Raesr Tachyon Бэд-Мобиль", "Range Rover SVR", "Range Rover Velar", "Renault Logan", "Renault Premium", "Rolls-Royce Cullinan", "Rolls-Royce Phantom", "Rolls-Royce Wraith", "Sea Yacht", "Skoda Octavia A7", "Skoda Rapid 2020", "Speedy Yacht", "Subaru BRZ", "Subaru Levorg", "Subaru WRX STI", "Suzuki GSX-R750", "Tesla Model S", "Tesla Model X", "Toyota Camry 3.5", "Toyota Camry XV55", "Toyota Chaser Tourer V JZX100", "Toyota Land Cruiser 200", "Toyota Mark 2", "Toyota Prius 2018", "Toyota Supra A80", "Toyota Supra A90", "UAZ 452 Бравый", "UAZ Hunter", "UAZ Patriot", "UAZ Patriot Pickup", "VAZ 1111", "VAZ 2101", "VAZ 2106", "VAZ 2108", "VAZ 2109", "VAZ 2110", "VAZ 2112", "VAZ 2114", "VAZ 2115", "VAZ 2170", "Volkswagen Golf GTI", "Volkswagen Golf GTI 2", "Volkswagen Multivan T6", "Volkswagen Passat 2021", "Volkswagen Polo", "Volkswagen Polo ППС", "Volkswagen Station Delux", "Volkswagen Touareg 2022", "Volvo 242DL", "Volvo V60", "Volvo XC90", "Xpeng P7", "Yamaha FZ-10", "Yamaha YZF-R6", "ZAZ 968", "ВАЗ 2107", "ВАЗ 21099", "ВАЗ 2170 ППС", "Вездеход Монстр", "ГАЗ Тигр", "Гидроцикл", "ЗИЛ 4104", "ЛуАЗ 969", "Минск 125", "Моторная лодка"];
+
+// Показываем/скрываем поле выбора марки в зависимости от категории
+const _origCatChange = window.onCategoryChange;
+document.addEventListener('DOMContentLoaded', () => {
+    const catSelect = document.getElementById('adCategory');
+    if (catSelect) {
+        catSelect.addEventListener('change', () => {
+            const isCar = ['cars','moto','trucks'].includes(catSelect.value);
+            document.getElementById('titleGroup').classList.toggle('hidden', isCar);
+            document.getElementById('carModelGroup').classList.toggle('hidden', !isCar);
+            if (!isCar) {
+                document.getElementById('carModelValue').value = '';
+                document.getElementById('carModelSelected').classList.add('hidden');
+                document.getElementById('carModelSearch').value = '';
+            }
+        });
+    }
+
+    // Закрываем dropdown при клике вне
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#carModelGroup')) {
+            document.getElementById('carModelDropdown')?.classList.add('hidden');
+        }
+    });
+});
+
+window.filterCarModels = function(query) {
+    const dropdown = document.getElementById('carModelDropdown');
+    const input    = document.getElementById('carModelSearch');
+    const q = query.toLowerCase().trim();
+    if (q.length < 1) { dropdown.classList.add('hidden'); return; }
+
+    const matches = ALL_VEHICLES.filter(v => v.toLowerCase().includes(q)).slice(0, 12);
+    if (!matches.length) { dropdown.classList.add('hidden'); return; }
+
+    dropdown.innerHTML = matches.map(v =>
+        `<div class="car-model-option" onclick="selectCarModel('${v.replace(/'/g, "\\'")}')">
+            <span>${v}</span>
+        </div>`
+    ).join('');
+
+    dropdown.classList.remove('hidden');
+};
+
+// Клик вне дропдауна — закрываем
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('carModelDropdown');
+    const input    = document.getElementById('carModelSearch');
+    if (!dropdown.contains(e.target) && e.target !== input) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+window.selectCarModel = function(name) {
+    document.getElementById('carModelValue').value = name;
+    document.getElementById('carModelSearch').value = name;
+    document.getElementById('carModelDropdown').classList.add('hidden');
+    const sel = document.getElementById('carModelSelected');
+    sel.innerHTML = `<span class="selected-model-badge">✓ ${name} <button type="button" onclick="clearCarModel()" style="background:none;border:none;color:#888;cursor:pointer;margin-left:4px;">×</button></span>`;
+    sel.classList.remove('hidden');
+    // Подставляем в adTitle тоже
+    const titleInput = document.getElementById('adTitle');
+    if (titleInput) titleInput.value = name;
+};
+
+window.clearCarModel = function() {
+    document.getElementById('carModelValue').value = '';
+    document.getElementById('carModelSearch').value = '';
+    document.getElementById('carModelSelected').classList.add('hidden');
+    const titleInput = document.getElementById('adTitle');
+    if (titleInput) titleInput.value = '';
+};
+
+</script>
+<script type="module" src="error-logger.js"></script>
+
+</body>
+</html>
