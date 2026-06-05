@@ -865,7 +865,7 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
-.create-ad-title {
+.create-item-title {
     text-align: center;
     font-size: 28px;
     margin-bottom: 30px;
@@ -1114,14 +1114,14 @@ body {
     box-shadow: 0 0 0 1px rgba(255,30,30,0.2), 0 8px 24px rgba(0,0,0,0.5);
 }
 
-.ad-header {
+.item-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 12px;
 }
 
-.ad-category {
+.item-category {
     padding: 4px 10px;
     border-radius: 20px;
     font-weight: 600;
@@ -1129,7 +1129,7 @@ body {
     letter-spacing: 0.5px;
 }
 
-.ad-title {
+.item-title {
     font-size: 18px;
     font-weight: bold;
     color: white;
@@ -1137,14 +1137,14 @@ body {
     line-height: 1.3;
 }
 
-.ad-price {
+.item-price {
     font-size: 22px;
     font-weight: bold;
     color: #ff1e1e;
     margin: 0;
 }
 
-.ad-description {
+.item-desc {
     color: #aaa;
     font-size: 14px;
     line-height: 1.5;
@@ -1155,7 +1155,7 @@ body {
     overflow: hidden;
 }
 
-.ad-footer {
+.item-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1166,9 +1166,9 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.ad-author { color: #ff1e1e; }
+.item-author { color: #ff1e1e; }
 
-.ad-hint {
+.item-hint {
     font-size: 11px;
     color: #666;
     text-align: center;
@@ -1177,7 +1177,7 @@ body {
     transition: opacity 0.3s;
 }
 
-.listing-card:hover .ad-hint { opacity: 1; }
+.listing-card:hover .item-hint { opacity: 1; }
 
 /* ===== FAV BUTTON ===== */
 .fav-btn {
@@ -1217,17 +1217,17 @@ body {
     overflow: hidden;
 }
 
-.my-listing-card .ad-header,
-.my-listing-card .ad-title,
-.my-listing-card .ad-price,
-.my-listing-card .ad-description,
-.my-listing-card .ad-footer {
+.my-listing-card .item-header,
+.my-listing-card .item-title,
+.my-listing-card .item-price,
+.my-listing-card .item-desc,
+.my-listing-card .item-footer {
     padding-left: 20px;
     padding-right: 20px;
     padding-top: 5px;
 }
 
-.my-listing-card .ad-header { padding-top: 20px; }
+.my-listing-card .item-header { padding-top: 20px; }
 
 .my-ad-actions {
     display: flex;
@@ -1651,11 +1651,11 @@ body {
 }
 
 @media (max-width: 480px) {
-    .my-listing-card .ad-header,
-    .my-listing-card .ad-title,
-    .my-listing-card .ad-price,
-    .my-listing-card .ad-description,
-    .my-listing-card .ad-footer {
+    .my-listing-card .item-header,
+    .my-listing-card .item-title,
+    .my-listing-card .item-price,
+    .my-listing-card .item-desc,
+    .my-listing-card .item-footer {
         padding-left: 15px;
         padding-right: 15px;
     }
@@ -1988,14 +1988,14 @@ body {
     color: white;
 }
 
-.report-ad-title {
+.report-item-title {
     color: #ff1e1e;
     font-weight: 600;
     margin-bottom: 5px;
     font-size: 16px;
 }
 
-.report-ad-author {
+.report-item-author {
     color: #888;
     font-size: 14px;
     margin-bottom: 20px;
@@ -2303,7 +2303,7 @@ body {
     margin-bottom: 5px;
 }
 
-.report-ad-title {
+.report-item-title {
     color: white;
     font-size: 16px;
     font-weight: 600;
@@ -3085,11 +3085,11 @@ body {
         gap: 8px;
     }
     .listing-card { padding: 12px 10px; }
-    .ad-title { font-size: 13px; }
-    .ad-price { font-size: 15px; }
-    .ad-description { display: none; }
-    .ad-hint { display: none; }
-    .ad-footer { font-size: 11px; }
+    .item-title { font-size: 13px; }
+    .item-price { font-size: 15px; }
+    .item-desc { display: none; }
+    .item-hint { display: none; }
+    .item-footer { font-size: 11px; }
 
     /* ===== КНОПКА ДОБАВИТЬ ===== */
     .add-button {
@@ -3152,7 +3152,7 @@ body {
         margin: 10px;
         border-radius: 16px;
     }
-    .create-ad-title { font-size: 22px; }
+    .create-item-title { font-size: 22px; }
     .form-group { margin-bottom: 16px; }
     .form-group input,
     .form-group select,
@@ -3519,7 +3519,7 @@ body {
 
 /* ── Заголовки страниц ── */
 .admin-title,
-.create-ad-title,
+.create-item-title,
 .servers-title {
     font-weight: 700 !important;
     letter-spacing: -0.02em;
@@ -3527,40 +3527,40 @@ body {
 }
 
 /* ── Карточки объявлений ── */
-.ad-title {
+.item-title {
     font-size: 15px !important;
     font-weight: 600 !important;
     line-height: 1.35 !important;
     letter-spacing: -0.01em;
 }
 
-.ad-price {
+.item-price {
     font-size: 17px !important;
     font-weight: 700 !important;
     letter-spacing: -0.02em;
 }
 
-.ad-description {
+.item-desc {
     font-size: 13px !important;
     line-height: 1.5 !important;
     color: #999 !important;
 }
 
-.ad-author {
+.item-author {
     font-size: 12px !important;
     font-weight: 600 !important;
     letter-spacing: 0.01em;
 }
 
 /* ── Модалка объявления ── */
-.modal-ad-title {
+.modal-item-title {
     font-size: 20px;
     font-weight: 700;
     line-height: 1.3;
     letter-spacing: -0.02em;
 }
 
-.modal-ad-price {
+.modal-item-price {
     font-size: 26px;
     font-weight: 800;
     letter-spacing: -0.03em;
@@ -3652,7 +3652,7 @@ input, textarea, select {
 
 /* ── Улучшенная читаемость второстепенного текста ── */
 /* Было #888 — слишком тусклый. Делаем чуть ярче для читаемости */
-.ad-description,
+.item-desc,
 .stat-label,
 .profile-sidebar-server {
     color: #999 !important;
@@ -3672,7 +3672,7 @@ input, textarea, select {
     line-height: 1.5;
 }
 
-.report-ad-title {
+.report-item-title {
     font-weight: 600 !important;
     letter-spacing: -0.01em;
 }
@@ -3694,8 +3694,8 @@ input, textarea, select {
 @media (max-width: 480px) {
     html { font-size: 14px; }
 
-    .ad-title  { font-size: 14px !important; }
-    .ad-price  { font-size: 16px !important; }
+    .item-title  { font-size: 14px !important; }
+    .item-price  { font-size: 16px !important; }
     .stat-number { font-size: 26px !important; }
 
     .logo-black,
@@ -3794,7 +3794,7 @@ input, textarea, select {
    📋 НАЗВАНИЕ ОБЪЯВЛЕНИЯ В КАРТОЧКЕ
    ═══════════════════════════════════════════ */
 
-.ad-title {
+.item-title {
     font-size: 15px !important;
     font-weight: 700 !important;
     color: #f0f0f0 !important;
@@ -4403,11 +4403,11 @@ input, textarea, select {
     }
 
     /* ── Карточки объявлений ── */
-    .ad-title {
+    .item-title {
         font-size: 14px !important;
     }
 
-    .ad-price {
+    .item-price {
         font-size: 15px !important;
     }
 

@@ -1145,8 +1145,8 @@ function createAdCard(ad) {
     
     return `
         <div class="listing-card" data-id="${ad.id}">
-            <div class="ad-header">
-                <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
+            <div class="item-header">
+                <span class="item-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
                 </span>
                 <div style="display:flex;align-items:center;gap:6px;">
@@ -1158,14 +1158,14 @@ function createAdCard(ad) {
                     </button>
                 </div>
             </div>
-            <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
-            <p class="ad-price">${priceFormatted}</p>
-            <p class="ad-description">${escapeHtml(ad.description || 'Нет описания')}</p>
-            <div class="ad-footer">
-                <span class="ad-author seller-link" onclick="event.stopPropagation(); window.location.href='profile.html?user=${encodeURIComponent(ad.author)}'">${escapeHtml(ad.author)}</span>
-               <span class="ad-date" title="${new Date(ad.createdAt).toLocaleString('ru-RU')}">${timeAgo(ad.createdAt)}</span>
+            <h3 class="item-title">${escapeHtml(ad.title)}</h3>
+            <p class="item-price">${priceFormatted}</p>
+            <p class="item-desc">${escapeHtml(ad.description || 'Нет описания')}</p>
+            <div class="item-footer">
+                <span class="item-author seller-link" onclick="event.stopPropagation(); window.location.href='profile.html?user=${encodeURIComponent(ad.author)}'">${escapeHtml(ad.author)}</span>
+               <span class="item-date" title="${new Date(ad.createdAt).toLocaleString('ru-RU')}">${timeAgo(ad.createdAt)}</span>
             </div>
-            <p class="ad-hint">Нажмите для подробностей</p>
+            <p class="item-hint">Нажмите для подробностей</p>
         </div>
     `;
 }
@@ -1191,17 +1191,17 @@ function createMyAdCard(ad) {
     
     return `
         <div class="listing-card my-listing-card" data-id="${ad.id}">
-            <div class="ad-header">
-                <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
+            <div class="item-header">
+                <span class="item-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
                 </span>
                 ${photoBadge}
             </div>
-            <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
-            <p class="ad-price">${priceFormatted}</p>
-            <p class="ad-description">${escapeHtml(ad.description || 'Нет описания')}</p>
-            <div class="ad-footer">
-                <span class="ad-date">${date}${updated}</span>
+            <h3 class="item-title">${escapeHtml(ad.title)}</h3>
+            <p class="item-price">${priceFormatted}</p>
+            <p class="item-desc">${escapeHtml(ad.description || 'Нет описания')}</p>
+            <div class="item-footer">
+                <span class="item-date">${date}${updated}</span>
             </div>
             <div class="my-ad-actions">
                 <button class="edit-btn" onclick="event.stopPropagation(); editAd(${ad.id})">
@@ -2309,8 +2309,8 @@ window.openReportModal = async function(adId) {
         <div class="report-modal-content">
             <button class="modal-close" onclick="closeReportModal()">&times;</button>
             <h2>🚩 Пожаловаться на объявление</h2>
-            <p class="report-ad-title">${escapeHtml(ad.title)}</p>
-            <p class="report-ad-author">Продавец: ${escapeHtml(ad.author)}</p>
+            <p class="report-item-title">${escapeHtml(ad.title)}</p>
+            <p class="report-item-author">Продавец: ${escapeHtml(ad.author)}</p>
             
             <div class="report-reasons">
                 <label class="report-reason">
