@@ -1091,7 +1091,7 @@ body {
 }
 
 /* ===== AD CARD ===== */
-.ad-card {
+.listing-card {
     background: rgba(17, 17, 17, 0.97);
     /* backdrop-filter убран — сильно грузит GPU при множестве карточек */
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1108,7 +1108,7 @@ body {
     will-change: border-color, box-shadow;
 }
 
-.ad-card:hover {
+.listing-card:hover {
     /* translateY убран — вызывал дёргание на краях */
     border-color: rgba(255, 30, 30, 0.4);
     box-shadow: 0 0 0 1px rgba(255,30,30,0.2), 0 8px 24px rgba(0,0,0,0.5);
@@ -1177,7 +1177,7 @@ body {
     transition: opacity 0.3s;
 }
 
-.ad-card:hover .ad-hint { opacity: 1; }
+.listing-card:hover .ad-hint { opacity: 1; }
 
 /* ===== FAV BUTTON ===== */
 .fav-btn {
@@ -1210,24 +1210,24 @@ body {
 }
 
 /* ===== MY ADS CARD ===== */
-.my-ad-card {
+.my-listing-card {
     display: flex;
     flex-direction: column;
     padding: 0;
     overflow: hidden;
 }
 
-.my-ad-card .ad-header,
-.my-ad-card .ad-title,
-.my-ad-card .ad-price,
-.my-ad-card .ad-description,
-.my-ad-card .ad-footer {
+.my-listing-card .ad-header,
+.my-listing-card .ad-title,
+.my-listing-card .ad-price,
+.my-listing-card .ad-description,
+.my-listing-card .ad-footer {
     padding-left: 20px;
     padding-right: 20px;
     padding-top: 5px;
 }
 
-.my-ad-card .ad-header { padding-top: 20px; }
+.my-listing-card .ad-header { padding-top: 20px; }
 
 .my-ad-actions {
     display: flex;
@@ -1651,11 +1651,11 @@ body {
 }
 
 @media (max-width: 480px) {
-    .my-ad-card .ad-header,
-    .my-ad-card .ad-title,
-    .my-ad-card .ad-price,
-    .my-ad-card .ad-description,
-    .my-ad-card .ad-footer {
+    .my-listing-card .ad-header,
+    .my-listing-card .ad-title,
+    .my-listing-card .ad-price,
+    .my-listing-card .ad-description,
+    .my-listing-card .ad-footer {
         padding-left: 15px;
         padding-right: 15px;
     }
@@ -3084,7 +3084,7 @@ body {
         grid-template-columns: 1fr 1fr;
         gap: 8px;
     }
-    .ad-card { padding: 12px 10px; }
+    .listing-card { padding: 12px 10px; }
     .ad-title { font-size: 13px; }
     .ad-price { font-size: 15px; }
     .ad-description { display: none; }
@@ -3459,12 +3459,12 @@ body {
 
 /* ── Тач-устройства — убираем hover-эффекты ── */
 @media (hover: none) {
-    .ad-card:hover { transform: none; }
+    .listing-card:hover { transform: none; }
     .add-button:hover { transform: none; }
     .btn-primary:hover { transform: none; box-shadow: none; }
 
     /* Активное состояние для тача */
-    .ad-card:active { transform: scale(0.98); }
+    .listing-card:active { transform: scale(0.98); }
     .add-button:active { transform: scale(0.95); }
     .btn-primary:active { transform: scale(0.97); }
 }

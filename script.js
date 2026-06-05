@@ -673,7 +673,7 @@ async function showMyAds() {
     
     adsGrid.innerHTML = myAds.map(ad => createMyAdCard(ad)).join('');
     
-    document.querySelectorAll('.ad-card').forEach(card => {
+    document.querySelectorAll('.listing-card').forEach(card => {
         card.addEventListener('click', async (e) => {
             if (e.target.closest('.my-ad-actions')) return;
             const adId = parseInt(card.dataset.id);
@@ -1144,7 +1144,7 @@ function createAdCard(ad) {
     const photoBadge = ad.photos?.length ? `<span class="photo-badge">📷 ${ad.photos.length}</span>` : '';
     
     return `
-        <div class="ad-card" data-id="${ad.id}">
+        <div class="listing-card" data-id="${ad.id}">
             <div class="ad-header">
                 <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
@@ -1190,7 +1190,7 @@ function createMyAdCard(ad) {
     const photoBadge = ad.photos?.length ? `<span class="photo-badge">📷 ${ad.photos.length}</span>` : '';
     
     return `
-        <div class="ad-card my-ad-card" data-id="${ad.id}">
+        <div class="listing-card my-listing-card" data-id="${ad.id}">
             <div class="ad-header">
                 <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
@@ -1235,7 +1235,7 @@ async function renderAds() {
     // Скелетон только при первой загрузке — потом не мигаем
     if (_adsFirstLoad) {
         adsGrid.innerHTML = Array(6).fill(0).map(() => `
-            <div class="ad-card skeleton-card" style="pointer-events:none;">
+            <div class="listing-card skeleton-card" style="pointer-events:none;">
                 <div class="skeleton-img" style="width:100%;height:160px;border-radius:10px;
                     background:linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%);
                     background-size:200% 100%;animation:skeletonShimmer 1.4s infinite;"></div>
@@ -1321,7 +1321,7 @@ async function renderAds() {
         adsGrid.appendChild(loadMoreBtn);
     }
 
-    document.querySelectorAll('.ad-card').forEach(card => {
+    document.querySelectorAll('.listing-card').forEach(card => {
         card.addEventListener('click', async () => {
             const adId = parseInt(card.dataset.id);
             const allAds = await getAllAds();
@@ -1987,7 +1987,7 @@ window.openSellerPage = async function(nickname) {
 window.toggleFavCard = function(adId) {
     const id = Number(adId);
     const isNowFav = toggleFavorite(id);
-    const btn = document.querySelector(`.ad-card[data-id="${id}"] .fav-btn`);
+    const btn = document.querySelector(`.listing-card[data-id="${id}"] .fav-btn`);
     if (btn) {
         btn.classList.toggle('active', isNowFav);
         const path = btn.querySelector('path');
@@ -2023,7 +2023,7 @@ async function showFavorites() {
     }
     
     adsGrid.innerHTML = favAds.map(ad => createAdCard(ad)).join('');
-    document.querySelectorAll('.ad-card').forEach(card => {
+    document.querySelectorAll('.listing-card').forEach(card => {
         card.addEventListener('click', async () => {
             const adId = parseInt(card.dataset.id);
             const ads = await getAllAds();
