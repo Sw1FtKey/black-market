@@ -2046,29 +2046,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const banner = document.createElement('div');
         banner.id = 'zbtBanner';
         banner.style.cssText = `
-            position:fixed; top:0; left:0; right:0; z-index:9999;
+            position:relative; z-index:10;
             background:linear-gradient(90deg, #1a0000, #2a0808, #1a0000);
             border-bottom:1px solid rgba(255,30,30,0.3);
             padding:7px 16px;
             display:flex; align-items:center; justify-content:center; gap:10px;
             font-size:13px; color:#ff8888;
-            animation: zbtPulse 3s ease-in-out infinite;
         `;
         banner.innerHTML = `
-            <style>
-                @keyframes zbtPulse {
-                    0%,100% { border-bottom-color: rgba(255,30,30,0.3); }
-                    50%      { border-bottom-color: rgba(255,30,30,0.6); }
-                }
-            </style>
             <span style="font-size:16px;">🚀</span>
             <span><b style="color:#ff4444;">Закрытое бета-тестирование</b> — сервер <b style="color:#fff;">${ZBT_SERVER}</b>. Данные будут сброшены после ЗБТ.</span>
             <button onclick="document.getElementById('zbtBanner').style.display='none'"
                 style="margin-left:auto;background:none;border:none;color:#666;cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;">✕</button>
         `;
-        document.body.prepend(banner);
-        // Сдвигаем контент вниз чтобы баннер не перекрывал
-        document.body.style.paddingTop = '34px';
+        const mainBody = document.querySelector('.main-body') || document.body;
+        mainBody.insertBefore(banner, mainBody.firstChild);
     }
 
     // ── Инициализация шторки профиля ──
