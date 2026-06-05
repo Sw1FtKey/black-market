@@ -166,6 +166,21 @@
 
 <!-- ===== ОСНОВНАЯ ОБЛАСТЬ ===== -->
 <div class="main-layout">
+    <div id="zbtBanner" style="
+        display:flex; align-items:center; gap:10px;
+        grid-column:1/-1; width:100%;
+        background:linear-gradient(90deg,#1a0000,#2a0808,#1a0000);
+        border:1px solid rgba(255,30,30,0.25);
+        border-radius:10px; padding:8px 16px;
+        font-size:13px; color:#ff8888;
+        margin-bottom:-4px;
+        position:relative; z-index:2;
+    ">
+        <span style="font-size:16px;">🚀</span>
+        <span><b style="color:#ff4444;">Закрытое бета-тестирование</b> — сервер <b style="color:#fff;">ZBT</b>. Данные будут сброшены после ЗБТ.</span>
+        <button onclick="document.getElementById('zbtBanner').style.display='none'"
+            style="margin-left:auto;background:none;border:none;color:#666;cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;">✕</button>
+    </div>
 
     <!-- ЛЕВАЯ ПАНЕЛЬ КАТЕГОРИЙ -->
     <aside class="categories">
