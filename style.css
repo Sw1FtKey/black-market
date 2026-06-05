@@ -4632,3 +4632,153 @@ input, textarea, select {
 
 .bug-submit-btn:hover { opacity: 0.88; }
 .bug-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════
+   МОБИЛЬНЫЕ ФИКСЫ (все 5 багов)
+   ═══════════════════════════════════════════════ */
+
+/* ── 1. Фильтры не вылезают за экран ── */
+@media (max-width: 768px) {
+    #advFilters {
+        box-sizing: border-box;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+    #advFilters input[type="number"] {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+    .fchip {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}
+
+/* ── 2. Категории скроллятся горизонтально ── */
+@media (max-width: 768px) {
+    .categories {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    #categoryList {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 6px !important;
+        padding: 8px 12px !important;
+        white-space: nowrap;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,30,30,0.15);
+    }
+    #categoryList::-webkit-scrollbar { display: none; }
+    #categoryList li {
+        flex-shrink: 0 !important;
+        border-radius: 20px !important;
+        padding: 7px 14px !important;
+        font-size: 13px !important;
+        white-space: nowrap;
+        border-left: none !important;
+        border-bottom: none !important;
+    }
+    #categoryList li.active {
+        background: rgba(255,30,30,0.15) !important;
+        border: 1px solid rgba(255,30,30,0.4) !important;
+    }
+    .main-layout {
+        flex-direction: column !important;
+    }
+    .content {
+        padding: 0 !important;
+    }
+}
+
+/* ── 3. Кнопка закрыть боковое меню на мобилке ── */
+@media (max-width: 768px) {
+    .profile-sidebar-header {
+        position: relative;
+    }
+    .sidebar-close-btn {
+        display: flex !important;
+    }
+}
+.sidebar-close-btn {
+    display: none;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #aaa;
+    font-size: 18px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+}
+.sidebar-close-btn:hover { background: rgba(255,30,30,0.15); color: #ff6b6b; }
+
+/* ── 4. Кнопка + не перекрывает фильтры ── */
+@media (max-width: 768px) {
+    #advFilters {
+        margin-bottom: 80px;
+    }
+    .add-button {
+        bottom: 20px !important;
+    }
+}
+
+/* ── 5. Статистика — компактные карточки на мобилке ── */
+@media (max-width: 768px) {
+    .stats-page-wrapper > div > div:first-of-type {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 20px !important;
+    }
+    .stats-page-wrapper > div > div:first-of-type > div {
+        padding: 14px 10px !important;
+    }
+    .stats-page-wrapper > div > div:first-of-type > div > div:first-child {
+        font-size: 24px !important;
+        margin-bottom: 6px !important;
+    }
+    .stats-page-wrapper > div > div:first-of-type > div [id*="total"],
+    .stats-page-wrapper > div > div:first-of-type > div [id*="conversion"] {
+        font-size: 24px !important;
+    }
+    .stats-page-wrapper h1 {
+        font-size: 22px !important;
+    }
+    .stats-page-wrapper {
+        padding: 16px 12px !important;
+    }
+}
+
+/* ── Админка — табы скроллятся горизонтально ── */
+@media (max-width: 768px) {
+    .admin-tabs {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap !important;
+        padding-bottom: 0;
+    }
+    .admin-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 10px 14px !important;
+        font-size: 13px !important;
+    }
+}
