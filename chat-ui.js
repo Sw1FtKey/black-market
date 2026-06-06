@@ -117,12 +117,18 @@ async function loadMessages(chatId) {
         currentChatData = null;
     }
     
-    messagesUnsubscribe = subscribeToMessages(chatId, (messages) => {
-        renderMessages(chatId, messages);
+    let loadMoreFn = null;
+    window._chatLoadMore = null;
+
+    const subscription = subscribeToMessages(chatId, (messages, hasMore) => {
+        renderMessages(chatId, messages, hasMore, () => loadMoreFn && loadMoreFn());
     });
+    messagesUnsubscribe = () => subscription.unsubscribe();
+    loadMoreFn = subscription.loadMore;
+    window._chatLoadMore = subscription.loadMore;
 }
 
-async function renderMessages(chatId, messages) {
+async function renderMessages(chatId, messages, hasMore, onLoadMore) {
     const chatData = currentChatData;
     if (!chatData) return;
     
@@ -140,6 +146,18 @@ async function renderMessages(chatId, messages) {
             </div>
             
             <div id="messagesContainer" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
+            ${hasMore ? `
+                <div id="loadMoreBtn" style="text-align:center; padding: 8px 0 4px;">
+                    <button onclick="window._chatLoadMore && window._chatLoadMore()" style="
+                        padding: 8px 20px; background: rgba(255,255,255,0.05);
+                        border: 1px solid rgba(255,255,255,0.12); border-radius: 20px;
+                        color: #888; font-size: 13px; cursor: pointer;
+                        transition: all 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        ↑ Загрузить ещё сообщения
+                    </button>
+                </div>` : ''}
             ${messages.length === 0 ? '<div style="text-align: center; padding: 40px; color: #666;"><p>Начните общение первым 👋</p></div>' : messages.map(msg => {
     const isMyMessage = msg.sender === currentUser.nickname;
     return `

@@ -2,7 +2,8 @@
 import { db } from './firebase-config.js';
 import { 
     doc, getDoc, setDoc, updateDoc, onSnapshot,
-    collection, query, orderBy, addDoc, writeBatch, where, getDocs
+    collection, query, orderBy, addDoc, writeBatch, where, getDocs,
+    limit, limitToLast, startAfter, endBefore, getCountFromServer
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -128,13 +129,72 @@ export async function markAsRead(chatId) {
 }
 
 // ===== ПОДПИСКИ (реальное время) =====
+
+const MESSAGES_PER_PAGE = 50; // сколько сообщений грузим за раз
+
+// subscribeToMessages — грузит последние MESSAGES_PER_PAGE сообщений
+// возвращает { unsubscribe, loadMore }
+// loadMore() — подгружает ещё MESSAGES_PER_PAGE сообщений выше
 export function subscribeToMessages(chatId, callback) {
     const messagesRef = collection(db, 'chats', chatId, 'messages');
-    const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    return onSnapshot(q, (snapshot) => {
-        const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        callback(messages);
+
+    // Состояние пагинации
+    let oldestDoc = null;       // самый старый загруженный документ
+    let allMessages = [];       // все загруженные сообщения (накопительно)
+    let hasMore = true;         // есть ли ещё старые сообщения
+    let unsubscribeFn = null;
+
+    // Подписываемся на последние N сообщений в реальном времени
+    const q = query(messagesRef, orderBy('timestamp', 'asc'), limitToLast(MESSAGES_PER_PAGE));
+    unsubscribeFn = onSnapshot(q, (snapshot) => {
+        const fresh = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Запоминаем самый старый документ для подгрузки
+        if (snapshot.docs.length > 0 && oldestDoc === null) {
+            oldestDoc = snapshot.docs[0];
+            // Если вернулось меньше лимита — старых сообщений больше нет
+            hasMore = snapshot.docs.length >= MESSAGES_PER_PAGE;
+        }
+
+        // Мерджим: старые сообщения (из loadMore) + свежие из подписки
+        const oldIds = new Set(allMessages.map(m => m.id));
+        const newFresh = fresh.filter(m => !oldIds.has(m.id));
+        allMessages = [...allMessages, ...newFresh];
+
+        callback(allMessages, hasMore);
     });
+
+    // Подгрузка старых сообщений (вызывается при скролле вверх)
+    async function loadMore() {
+        if (!hasMore || !oldestDoc) return;
+
+        const q2 = query(
+            messagesRef,
+            orderBy('timestamp', 'asc'),
+            endBefore(oldestDoc),
+            limitToLast(MESSAGES_PER_PAGE)
+        );
+
+        const snap = await getDocs(q2);
+        if (snap.empty) {
+            hasMore = false;
+            callback(allMessages, false);
+            return;
+        }
+
+        const older = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        oldestDoc = snap.docs[0];
+        hasMore = snap.docs.length >= MESSAGES_PER_PAGE;
+
+        // Вставляем старые сообщения в начало
+        allMessages = [...older, ...allMessages];
+        callback(allMessages, hasMore);
+    }
+
+    return {
+        unsubscribe: () => unsubscribeFn && unsubscribeFn(),
+        loadMore
+    };
 }
 
 export function subscribeToChats(callback) {
