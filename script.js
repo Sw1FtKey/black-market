@@ -2288,6 +2288,7 @@ async function updateFirebaseUser(updatedUser) {
 // Глобальные функции
 window.openProfileEdit = openProfileEdit;
 window.closeProfileEdit = closeProfileEdit;
+window.closeProfileMenu = closeProfileMenu;
 window.saveProfileChanges = saveProfileChanges;
 window.editAd = editAd;
 window.closeEditModal = closeEditModal;

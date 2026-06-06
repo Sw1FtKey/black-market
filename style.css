@@ -4782,3 +4782,18 @@ input, textarea, select {
         font-size: 13px !important;
     }
 }
+
+/* ── Модалка объявления — не обрезается на мобилке ── */
+@media (max-width: 768px) {
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+    .modal-content {
+        max-height: 92dvh !important;
+        border-radius: 20px 20px 0 0 !important;
+        margin: 0 !important;
+        padding: 20px 16px !important;
+        width: 100% !important;
+    }
+}
