@@ -1532,7 +1532,7 @@ function createModalContent(ad) {
         // Показываем блок если есть хоть одна кнопка
         if (chatBtn || tgBtn) {
             chatButtonHtml = `
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:15px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:15px;margin-top:14px;">
                     ${chatBtn}
                     ${tgBtn}
                 </div>`;
@@ -1877,7 +1877,7 @@ function renderHouseCard(ad) {
     if (ad.location) items += badge('📍 ' + escapeHtml(ad.location), 'blue');
     if (ad.upgrades) items += badge('🏠 Дом ' + escapeHtml(ad.upgrades), ad.upgrades === '5/5' ? 'green' : 'amber');
     if (ad.basement) items += badge('🏚 Подвал ' + escapeHtml(ad.basement), ad.basement === '5/5' ? 'green' : 'amber');
-    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">${items}</div>`;
+    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">${items}</div>`;
     html += '</div>';
     return html;
 }
@@ -1887,7 +1887,7 @@ function renderGarageCard(ad) {
     let items = '';
     if (ad.location) items += badge('📍 ' + escapeHtml(ad.location), 'blue');
     if (ad.upgrades) items += badge('🔧 Улучшения ' + escapeHtml(ad.upgrades), ad.upgrades === '5/5' ? 'green' : 'amber');
-    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">${items}</div>`;
+    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">${items}</div>`;
     html += '</div>';
     return html;
 }
@@ -1903,7 +1903,7 @@ function renderBusinessCard(ad) {
         const income = from && to ? `${from} — ${to}` : from ? `от ${from}` : `до ${to}`;
         if (income) items += badge('💰 ' + income + '/день', 'green');
     }
-    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">${items}</div>`;
+    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">${items}</div>`;
     html += '</div>';
     return html;
 }
