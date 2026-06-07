@@ -315,7 +315,6 @@ function renderReports() {
                     ${r.status === 'new' ? `
                         <button onclick="takeInWork(${r.id})" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">⚡ Взять в работу</button>
                         <button onclick="dismissReport(${r.id})" style="padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">✕ Отклонить</button>
-                        <button onclick="deleteReport(${r.id})" style="padding:8px 16px;background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.2);color:#ef5350;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">🗑 Удалить жалобу</button>
                     ` : ''}
 
                     ${r.status === 'viewed' ? `
