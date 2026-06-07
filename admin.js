@@ -95,9 +95,18 @@ function canDo(action) {
 // ===== ДАННЫЕ =====
 async function getAllAds() {
     try {
-        const snap = await getDoc(doc(db, 'data', 'ads'));
-        return snap.exists() ? snap.data().items || [] : [];
+        const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        const snap = await getDocs(collection(db, 'ads'));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     } catch(e) { return []; }
+}
+
+async function deleteAdById(adId) {
+    try {
+        const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        await deleteDoc(doc(db, 'ads', String(adId)));
+        return true;
+    } catch(e) { console.error('Ошибка удаления объявления:', e); return false; }
 }
 async function getReports() {
     try {
@@ -299,13 +308,20 @@ function renderReports() {
                 <!-- Комментарий -->
                 ${r.comment ? `<div style="color:#aaa;font-style:italic;font-size:13px;padding:10px 14px;background:rgba(255,255,255,0.03);border-left:3px solid rgba(255,255,255,0.1);border-radius:0 8px 8px 0;margin-bottom:14px;">"${escapeHtml(r.comment)}"</div>` : ''}
 
-                <!-- Кнопки -->
+                <!-- Кнопки — зависят от статуса -->
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    <button onclick="viewReportAd(${r.adId})" style="padding:8px 16px;background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.3);color:#64b5f6;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">👁 Посмотреть</button>
-                    ${r.status === 'new' ? `<button onclick="takeInWork(${r.id})" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">⚡ Взять в работу</button>` : ''}
-                    ${r.status !== 'resolved' ? `<button onclick="resolveReport(${r.id})" style="padding:8px 16px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);color:#66bb6a;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">✓ Решить</button>` : ''}
-                    ${canDo('delete_ad') ? `<button onclick="deleteAdFromReport(${r.adId}, ${r.id})" style="padding:8px 16px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);color:#ef5350;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">🗑 Удалить</button>` : ''}
-                    ${canDo('ban') ? `<button onclick="openPunishModal('${r.adAuthor || r.author}')" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">🔨 Наказать</button>` : ''}
+                    <button onclick="viewReportAd('${r.adId}')" style="padding:8px 16px;background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.3);color:#64b5f6;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">👁 Посмотреть</button>
+
+                    ${r.status === 'new' ? `
+                        <button onclick="takeInWork(${r.id})" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">⚡ Взять в работу</button>
+                        <button onclick="dismissReport(${r.id})" style="padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">✕ Отклонить</button>
+                    ` : ''}
+
+                    ${r.status === 'viewed' ? `
+                        ${canDo('delete_ad') ? `<button onclick="deleteAdFromReport('${r.adId}', ${r.id})" style="padding:8px 16px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);color:#ef5350;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">🗑 Удалить объявление</button>` : ''}
+                        ${canDo('ban') ? `<button onclick="openPunishModal('${escapeHtml(r.adAuthor || r.author || '')}', ${r.id})" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">🔨 Наказать</button>` : ''}
+                        <button onclick="resolveReport(${r.id})" style="padding:8px 16px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);color:#66bb6a;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">✓ Решить</button>
+                    ` : ''}
                 </div>
             </div>
         </div>`;
@@ -370,6 +386,17 @@ window.massResolve = async function() {
     showToast('Жалобы отмечены решёнными', 'success');
 };
 
+window.dismissReport = async function(reportId) {
+    const reports = await getReports();
+    const r = reports.find(r => r.id === reportId);
+    if (r) { r.status = 'resolved'; await saveReports(reports); }
+    await saveAdminLog({ type: 'dismiss_report', target: reportId, details: 'Жалоба отклонена' });
+    allReportsData = reports;
+    renderReports();
+    updateStats();
+    showToast('Жалоба отклонена', 'info');
+};
+
 window.resolveReport = async function(reportId) {
     const reports = await getReports();
     const r = reports.find(r => r.id === reportId);
@@ -381,16 +408,32 @@ window.resolveReport = async function(reportId) {
 
 window.deleteAdFromReport = async function(adId, reportId) {
     if (!requireRole('delete_ad')) return;
-    if (!confirm('Удалить объявление?')) return;
+    if (!confirm('Удалить объявление и выдать предупреждение продавцу?')) return;
+
     const ads = await getAllAds();
-    const ad = ads.find(a => a.id === adId);
-    await setDoc(doc(db, 'data', 'ads'), { items: ads.filter(a => a.id !== adId) });
+    const ad = ads.find(a => String(a.id) === String(adId));
+    const author = ad?.author;
+
+    // Удаляем объявление из коллекции ads/{adId}
+    const deleted = await deleteAdById(adId);
+    if (!deleted) { showToast('Ошибка удаления объявления', 'error'); return; }
+
+    // Автоматически выдаём предупреждение продавцу
+    if (author) {
+        const violation = { type: 'warn', reason: 'violation', note: 'Объявление удалено модератором', admin: currentUser?.nickname || 'admin' };
+        await saveUserViolation(author, violation);
+        await saveAdminLog({ type: 'warn_user', target: author, details: `Автопредупреждение при удалении объявления "${ad?.title}"` });
+        showToast(`Предупреждение выдано: ${author}`, 'info');
+    }
+
+    // Закрываем жалобу автоматически
     const reports = await getReports();
-    reports.forEach(r => { if (r.adId === adId) r.status = 'resolved'; });
+    reports.forEach(r => { if (r.adId == adId || r.id === reportId) r.status = 'resolved'; });
     await saveReports(reports);
-    await saveAdminLog({ type: 'delete_ad', target: adId, details: `Удалено объявление "${ad?.title}" (из жалобы)` });
+
+    await saveAdminLog({ type: 'delete_ad', target: adId, details: `Удалено "${ad?.title}" по жалобе #${reportId}` });
     await loadReports();
-    showToast('Объявление удалено', 'success');
+    showToast('Объявление удалено, предупреждение выдано', 'success');
 };
 
 window.viewReportAd = async function(adId) {
@@ -435,8 +478,8 @@ function openAdModal(ad) {
 window.deleteAdDirect = async function(adId) {
     if (!requireRole('delete_ad')) return;
     if (!confirm('Удалить объявление?')) return;
-    const ads = await getAllAds();
-    await setDoc(doc(db, 'data', 'ads'), { items: ads.filter(a => a.id !== adId) });
+    const deleted = await deleteAdById(adId);
+    if (!deleted) { showToast('Ошибка удаления', 'error'); return; }
     await saveAdminLog({ type: 'delete_ad', target: adId, details: 'Прямое удаление из просмотра' });
     document.getElementById('adminAdModal')?.remove();
     showToast('Объявление удалено', 'success');
@@ -484,7 +527,7 @@ async function determineBanLevel(nickname) {
 }
 
 // ===== МОДАЛКА НАКАЗАНИЯ (оригинальный стиль) =====
-window.openPunishModal = async function(nickname) {
+window.openPunishModal = async function(nickname, reportId) {
     if (!canDo('ban') && !canDo('warn')) return;
     if (isProcessing('punish_' + nickname)) return;
     const existing = document.getElementById('punishmentModal');
@@ -539,7 +582,8 @@ window.openPunishModal = async function(nickname) {
                         style="border-color:${cfg.color};color:${cfg.color};"
                         data-nick="${escapeHtml(nickname)}"
                         data-level="${key}"
-                        onclick="executePunishment(this.dataset.nick, this.dataset.level)">
+                        data-report="${reportId || ''}"
+                        onclick="executePunishment(this.dataset.nick, this.dataset.level, this.dataset.report)">
                         ${cfg.name}
                     </button>
                 `).join('')}
@@ -568,7 +612,7 @@ window.selectPunishReason = function(btn) {
     document.getElementById('punishmentReason').value = btn.dataset.value;
 };
 
-window.executePunishment = async function(nickname, level) {
+window.executePunishment = async function(nickname, level, reportId) {
     if (!requireRole('ban')) return;
     if (!nickname || !level) { showToast('Ошибка: не указан ник или уровень', 'error'); return; }
     const cfg = BAN_LEVELS[level];
@@ -595,10 +639,19 @@ window.executePunishment = async function(nickname, level) {
             await setDoc(doc(db, 'data', 'bannedUsers'), { items: bannedUsers });
 
             const ads = await getAllAds();
-            const filtered = ads.filter(a => a.author !== nickname);
-            const deleted = ads.length - filtered.length;
-            await setDoc(doc(db, 'data', 'ads'), { items: filtered });
+            const toDelete = ads.filter(a => a.author === nickname || a.author?.toLowerCase() === nickname.toLowerCase());
+            for (const ad of toDelete) {
+                await deleteAdById(ad.id);
+            }
+            const deleted = toDelete.length;
             if (deleted > 0) showToast(`Удалено ${deleted} объявлений от ${nickname}`, 'info');
+        }
+
+        // Автозакрытие жалобы после наказания
+        if (reportId) {
+            const reports = await getReports();
+            const r = reports.find(r => String(r.id) === String(reportId));
+            if (r) { r.status = 'resolved'; await saveReports(reports); }
         }
 
         await saveAdminLog({
@@ -989,13 +1042,14 @@ window.switchTab = window.switchTab;
 // ===== ПИН ОБЪЯВЛЕНИЙ (admin+) =====
 window.togglePinAd = async function(adId) {
     if (!canDo('pin_ad')) { showToast('Недостаточно прав', 'error'); return; }
-    const ads = await getAllAds();
-    const idx = ads.findIndex(a => a.id === adId);
-    if (idx === -1) return;
-    ads[idx].pinned = !ads[idx].pinned;
-    await setDoc(doc(db, 'data', 'ads'), { items: ads });
-    await saveAdminLog({ type: 'pin_ad', target: adId, details: ads[idx].pinned ? 'Закреплено' : 'Откреплено' });
-    showToast(ads[idx].pinned ? '📌 Объявление закреплено' : 'Объявление откреплено', 'success');
+    const adRef = doc(db, 'ads', String(adId));
+    const snap = await getDoc(adRef);
+    if (!snap.exists()) { showToast('Объявление не найдено', 'error'); return; }
+    const pinned = !snap.data().pinned;
+    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    await updateDoc(adRef, { pinned });
+    await saveAdminLog({ type: 'pin_ad', target: adId, details: pinned ? 'Закреплено' : 'Откреплено' });
+    showToast(pinned ? '📌 Объявление закреплено' : 'Объявление откреплено', 'success');
 };
 
 // ===== ВЕРИФИКАЦИЯ ПРОДАВЦА (owner) =====
@@ -1003,8 +1057,12 @@ window.toggleVerify = async function(nickname) {
     if (!canDo('manage_roles')) { showToast('Недостаточно прав', 'error'); return; }
     const ads = await getAllAds();
     const hasVerified = ads.some(a => a.author === nickname && a.verifiedSeller);
-    ads.forEach(a => { if (a.author === nickname) a.verifiedSeller = !hasVerified; });
-    await setDoc(doc(db, 'data', 'ads'), { items: ads });
+    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    for (const ad of ads) {
+        if (ad.author === nickname) {
+            await updateDoc(doc(db, 'ads', String(ad.id)), { verifiedSeller: !hasVerified });
+        }
+    }
     showToast(hasVerified ? `Верификация снята с ${nickname}` : `${nickname} верифицирован ✓`, 'success');
 };
 
