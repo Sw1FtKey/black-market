@@ -101,6 +101,17 @@ async function getAllAds() {
     } catch(e) { return []; }
 }
 
+async function getUsers() {
+    try {
+        const snap = await getDoc(doc(db, 'data', 'users'));
+        return snap.exists() ? snap.data().items || [] : [];
+    } catch(e) { return []; }
+}
+
+async function saveUsers(users) {
+    await setDoc(doc(db, 'data', 'users'), { items: users });
+}
+
 async function deleteAdById(adId) {
     try {
         const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
