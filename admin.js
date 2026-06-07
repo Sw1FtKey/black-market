@@ -437,10 +437,22 @@ window.deleteAdFromReport = async function(adId, reportId) {
 };
 
 window.viewReportAd = async function(adId) {
-    const ads = await getAllAds();
-    const ad = ads.find(a => a.id === adId);
-    if (!ad) { showToast('Объявление не найдено (возможно уже удалено)', 'warning'); return; }
-    openAdModal(ad);
+    try {
+        // Сначала пробуем прочитать напрямую из Firestore по ID
+        const adSnap = await getDoc(doc(db, 'ads', String(adId)));
+        if (adSnap.exists()) {
+            openAdModal({ id: adSnap.id, ...adSnap.data() });
+            return;
+        }
+        // Fallback — ищем в списке всех объявлений
+        const ads = await getAllAds();
+        const ad = ads.find(a => String(a.id) === String(adId));
+        if (!ad) { showToast('Объявление не найдено (возможно уже удалено)', 'warning'); return; }
+        openAdModal(ad);
+    } catch(e) {
+        console.error('Ошибка просмотра объявления:', e);
+        showToast('Ошибка загрузки объявления', 'error');
+    }
 };
 
 // ===== МОДАЛКА ПРОСМОТРА ОБЪЯВЛЕНИЯ =====
