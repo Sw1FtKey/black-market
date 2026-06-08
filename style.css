@@ -4818,3 +4818,84 @@ input, textarea, select {
         grid-template-columns: repeat(2, 1fr) !important;
     }
 }
+
+/* ── Серверная сетка — мобильный список ── */
+@media (max-width: 768px) {
+    .servers-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        padding: 0 12px !important;
+        background: var(--color-background-primary, #111);
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .servers-grid .server-card {
+        /* Сбрасываем кнопочные стили */
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+        min-height: 52px !important;
+        padding: 0 14px !important;
+        justify-content: flex-start !important;
+        gap: 14px;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+        color: var(--color-text-primary, #fff) !important;
+        text-shadow: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+        position: relative;
+    }
+
+    .servers-grid .server-card:last-child {
+        border-bottom: none !important;
+    }
+
+    /* Цветная точка перед названием через псевдоэлемент */
+    .servers-grid .server-card::before {
+        content: '' !important;
+        width: 14px !important;
+        height: 14px !important;
+        border-radius: 50% !important;
+        background: var(--server-color) !important;
+        flex-shrink: 0 !important;
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        filter: none !important;
+        opacity: 1 !important;
+        box-shadow: 0 0 0 3px rgba(var(--server-color), 0.2) !important;
+    }
+
+    .servers-grid .server-card:hover {
+        background: rgba(255,255,255,0.04) !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .servers-grid .server-card:active {
+        background: rgba(255,255,255,0.08) !important;
+        transform: none !important;
+    }
+
+    /* Стрелка справа */
+    .servers-grid .server-card::after {
+        content: '›' !important;
+        display: block !important;
+        margin-left: auto !important;
+        color: rgba(255,255,255,0.2) !important;
+        font-size: 20px !important;
+        position: static !important;
+        background: none !important;
+        height: auto !important;
+        top: auto !important;
+    }
+}
