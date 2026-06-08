@@ -23,5 +23,5 @@ export { db, auth };
 // true  — включён: 1 сервер, баннер, лимиты
 // false — выключен: обычный режим, все сервера
 // ─────────────────────────────────────────────
-export const ZBT_MODE = true;
+export const ZBT_MODE = false;
 export const ZBT_SERVER = 'ZBT'; // название единственного сервера
