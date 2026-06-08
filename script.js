@@ -698,6 +698,33 @@ const profileBox    = document.getElementById('profileBox');
 const profileMenu   = document.getElementById('profileMenu');
 const profileOverlay = document.getElementById('profileOverlay');
 
+// ── Синхронизация аватара из Firestore ──
+// Подтягивает актуальный аватар из базы и обновляет везде
+async function syncAvatarFromFirestore() {
+    if (!currentUser?.nickname) return;
+    try {
+        const users = await getUsers();
+        const user = users.find(u => u.nickname === currentUser.nickname);
+        if (!user?.avatar) return;
+
+        // Если аватар в Firestore отличается от локального — обновляем
+        if (user.avatar !== currentUser.avatar) {
+            currentUser.avatar = user.avatar;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            localStorage.setItem(`avatar_${currentUser.nickname}`, user.avatar);
+
+            // Перерисовываем аватары везде
+            const img = `<img src="${user.avatar}" alt="avatar">`;
+            const headerCircle = document.getElementById('headerAvatarCircle');
+            const sidebarCircle = document.getElementById('sidebarAvatarCircle');
+            if (headerCircle) headerCircle.innerHTML = img;
+            if (sidebarCircle) sidebarCircle.innerHTML = img;
+        }
+    } catch(e) {
+        // Тихо падаем — это фоновая синхронизация
+    }
+}
+
 // ── Инициализация шапки шторки ──
 function initSidebarHeader() {
     if (!currentUser) return;
@@ -712,6 +739,9 @@ function initSidebarHeader() {
         currentUser.avatar = avatar;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
+
+    // Подгружаем актуальный аватар из Firestore в фоне
+    syncAvatarFromFirestore();
 
     // ── Кнопка в шапке сайта ──
     const profileBox = document.getElementById('profileBox');
