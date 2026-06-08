@@ -993,7 +993,7 @@ window.filterBadgeNicks = function(val) {
 window.filterBadgeUserList = function(val) {
     renderBadgeUserList(window._badgeUsers || [], val);
 };
-}
+
 
 window.grantBadge = async function() {
     if (!requireRole('manage_roles')) return;
