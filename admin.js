@@ -886,13 +886,20 @@ async function loadBadgesPanel() {
     <!-- Форма выдачи -->
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px;margin-bottom:20px;">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-            <div style="flex:1;min-width:150px;">
+            <div style="flex:1;min-width:150px;position:relative;">
                 <label style="color:#888;font-size:12px;display:block;margin-bottom:6px;">Никнейм</label>
-                <input id="badgeNickInput" placeholder="Введите никнейм..." list="badgeNickList"
+                <input id="badgeNickInput" placeholder="Начните вводить никнейм..."
+                    autocomplete="off"
+                    oninput="filterBadgeNicks(this.value)"
+                    onfocus="filterBadgeNicks(this.value)"
                     style="width:100%;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;box-sizing:border-box;">
-                <datalist id="badgeNickList">
-                    ${users.map(u => `<option value="${escapeHtml(u.nickname)}">`).join('')}
-                </datalist>
+                <!-- Дропдаун автодополнения -->
+                <div id="badgeNickDropdown" style="
+                    display:none;position:absolute;top:100%;left:0;right:0;z-index:100;
+                    background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);
+                    border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;
+                    box-shadow:0 8px 24px rgba(0,0,0,0.5);
+                "></div>
             </div>
             <div style="min-width:220px;">
                 <label style="color:#888;font-size:12px;display:block;margin-bottom:6px;">Бейдж</label>
@@ -909,23 +916,83 @@ async function loadBadgesPanel() {
         </div>
     </div>
 
-    <!-- Список юзеров с бейджами -->
-    <div id="badgesUserList">
-        ${users.filter(u => u.badges?.length).length === 0
-            ? '<div style="color:#555;text-align:center;padding:24px;">Ни у кого пока нет бейджей</div>'
-            : users.filter(u => u.badges?.length).map(u => `
-                <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;">
-                    <div style="font-weight:600;color:white;min-width:100px;">${escapeHtml(u.nickname)}</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;">
-                        ${u.badges.map(k => {
-                            const cfg = BADGES_CONFIG[k];
-                            return cfg ? `<span style="background:${cfg.color}18;color:${cfg.color};border:1px solid ${cfg.color}40;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;">${cfg.icon} ${cfg.label}</span>` : '';
-                        }).join('')}
-                    </div>
-                </div>`
-            ).join('')
+    <!-- Поиск по списку -->
+    <div style="margin-bottom:12px;">
+        <input id="badgeUserSearch" placeholder="🔍 Фильтр по нику..."
+            oninput="filterBadgeUserList(this.value)"
+            style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:white;font-size:14px;box-sizing:border-box;">
+    </div>
+
+    <!-- Список всех юзеров -->
+    <div id="badgesUserList"></div>`;
+
+    // Сохраняем юзеров глобально для фильтрации
+    window._badgeUsers = users;
+    renderBadgeUserList(users, '');
+
+    // Закрываем дропдаун при клике вне
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#badgeNickInput') && !e.target.closest('#badgeNickDropdown')) {
+            document.getElementById('badgeNickDropdown')?.style && (document.getElementById('badgeNickDropdown').style.display = 'none');
         }
-    </div>`;
+    }, { once: false });
+}
+
+function renderBadgeUserList(users, filter) {
+    const el = document.getElementById('badgesUserList');
+    if (!el) return;
+    const filtered = filter
+        ? users.filter(u => u.nickname?.toLowerCase().includes(filter.toLowerCase()))
+        : users;
+
+    if (filtered.length === 0) {
+        el.innerHTML = `<div style="color:#555;text-align:center;padding:24px;">Никого не найдено</div>`;
+        return;
+    }
+
+    el.innerHTML = filtered.map(u => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;margin-bottom:6px;flex-wrap:wrap;cursor:pointer;"
+            onclick="document.getElementById('badgeNickInput').value='${escapeHtml(u.nickname)}'; document.getElementById('badgeNickDropdown').style.display='none';">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,30,30,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ff6b6b;flex-shrink:0;">${u.nickname?.charAt(0).toUpperCase()}</div>
+            <div style="font-weight:600;color:white;min-width:80px;">${escapeHtml(u.nickname)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;flex:1;">
+                ${u.badges?.length
+                    ? u.badges.map(k => {
+                        const cfg = BADGES_CONFIG[k];
+                        return cfg ? `<span style="background:${cfg.color}18;color:${cfg.color};border:1px solid ${cfg.color}40;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;">${cfg.icon} ${cfg.label}</span>` : '';
+                    }).join('')
+                    : '<span style="color:#444;font-size:12px;">нет бейджей</span>'
+                }
+            </div>
+        </div>`
+    ).join('');
+}
+
+window.filterBadgeNicks = function(val) {
+    const dropdown = document.getElementById('badgeNickDropdown');
+    if (!dropdown) return;
+    const users = window._badgeUsers || [];
+    const matches = val
+        ? users.filter(u => u.nickname?.toLowerCase().includes(val.toLowerCase())).slice(0, 8)
+        : users.slice(0, 8);
+
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = matches.map(u => `
+        <div onclick="document.getElementById('badgeNickInput').value='${escapeHtml(u.nickname)}'; document.getElementById('badgeNickDropdown').style.display='none';"
+            style="padding:9px 14px;cursor:pointer;color:white;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.05);"
+            onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+            onmouseout="this.style.background=''">
+            ${escapeHtml(u.nickname)}
+            ${u.badges?.length ? `<span style="color:#555;font-size:12px;margin-left:6px;">${u.badges.length} бейдж${u.badges.length > 1 ? 'а' : ''}</span>` : ''}
+        </div>`
+    ).join('');
+};
+
+window.filterBadgeUserList = function(val) {
+    renderBadgeUserList(window._badgeUsers || [], val);
+};
 }
 
 window.grantBadge = async function() {
