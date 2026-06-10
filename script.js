@@ -894,75 +894,7 @@ document.getElementById('addAdButton')?.addEventListener('click', () => {
     window.location.href = 'create-ad.html';
 });
 
-// ── Смена пароля — показываем подтверждение ──
-document.getElementById('editPasswordNew')?.addEventListener('input', function() {
-    const confirmGroup = document.getElementById('editPasswordConfirmGroup');
-    if (confirmGroup) confirmGroup.style.display = this.value.length > 0 ? 'flex' : 'none';
-});
-
-// ── Сохранение профиля ──
-document.getElementById('saveProfileBtn')?.addEventListener('click', async () => {
-    const telegram = document.getElementById('editTelegram')?.value.trim();
-    const newPass  = document.getElementById('editPasswordNew')?.value;
-    const confPass = document.getElementById('editPasswordConfirm')?.value;
-
-    if (newPass && newPass !== confPass) {
-        showToast('Пароли не совпадают', 'error'); return;
-    }
-    if (newPass && newPass.length < 6) {
-        showToast('Пароль минимум 6 символов', 'error'); return;
-    }
-
-    const btn = document.getElementById('saveProfileBtn');
-    btn.textContent = 'Сохраняю...';
-    btn.disabled = true;
-
-    try {
-        // Обновляем данные в Firestore
-        const { getUsers, saveUsers } = await import('./api.js');
-        const users = await getUsers();
-        const idx = users.findIndex(u => u.nickname === currentUser.nickname);
-        if (idx !== -1) {
-            if (telegram !== undefined) users[idx].telegram = telegram;
-            if (_pendingAvatar)         users[idx].avatar   = _pendingAvatar;
-            await saveUsers(users);
-            invalidateCache('users'); // сбрасываем кэш чтобы при следующем входе взялись свежие данные
-        }
-
-        // Обновляем Firebase Auth пароль если нужно
-        if (newPass) {
-            const { updatePassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-            await updatePassword(auth.currentUser, newPass);
-        }
-
-        // Обновляем localStorage и currentUser
-        const freshAvatar = _pendingAvatar || currentUser.avatar;
-        Object.assign(currentUser, { telegram, avatar: freshAvatar });
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        // Дополнительно храним аватар отдельно — надёжнее чем в объекте пользователя
-        if (freshAvatar) localStorage.setItem(`avatar_${currentUser.nickname}`, freshAvatar);
-        _pendingAvatar = null;
-        // Перерисовываем шапку с новым аватаром
-        initSidebarHeader();
-
-        showToast('Профиль сохранён!', 'success');
-        document.getElementById('editPasswordNew').value = '';
-        document.getElementById('editPasswordConfirm').value = '';
-        document.getElementById('editPasswordConfirmGroup').style.display = 'none';
-
-    } catch (e) {
-        console.error('Ошибка сохранения профиля:', e);
-        showToast('Ошибка сохранения', 'error');
-    } finally {
-        btn.textContent = 'Сохранить изменения';
-        btn.disabled = false;
-    }
-});
-
-// ── Загрузка аватара ──
-let _pendingAvatar = null;
-
-// Загрузка аватара перенесена на страницу профиля (кнопка "Редактировать профиль")
+// Редактирование профиля перенесено на страницу profile.html
 
 // ── Статистика в шторке (ленивая загрузка) ──
 let _sidebarStatsLoaded = false;
