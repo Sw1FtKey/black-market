@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Black Market</title>
-    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="main-body">
@@ -43,6 +43,8 @@
     <div class="profile-sidebar-header">
         <div class="sidebar-avatar-wrap" id="sidebarAvatarWrap">
             <div class="sidebar-avatar-circle" id="sidebarAvatarCircle">S</div>
+            <div class="sidebar-avatar-edit" id="sidebarAvatarEdit" title="Сменить аватар">✏️</div>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
         </div>
         <div class="profile-sidebar-info">
             <span class="profile-sidebar-name" id="sidebarNickname">Player</span>
@@ -54,7 +56,8 @@
     <!-- ── ТАБЫ ── -->
     <div class="sidebar-tabs">
         <button class="sidebar-tab active" data-tab="main" onclick="switchSidebarTab('main',this)">Главное</button>
-                <button class="sidebar-tab" data-tab="stats" onclick="switchSidebarTab('stats',this)">Статистика</button>
+        <button class="sidebar-tab" data-tab="profile" onclick="switchSidebarTab('profile',this)">Профиль</button>
+        <button class="sidebar-tab" data-tab="stats" onclick="switchSidebarTab('stats',this)">Статистика</button>
     </div>
 
     <!-- ── ТАБ: ГЛАВНОЕ ── -->
@@ -221,7 +224,7 @@
             <!-- Аватар (просто показываем, без загрузки) -->
             <div class="avatar-upload-section">
                 <div class="current-avatar" id="editAvatarPreview">
-                   
+                    <img src="images.jpg" alt="Аватар" style="width:100%;height:100%;object-fit:cover;">
                 </div>
             </div>
 
