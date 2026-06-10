@@ -225,12 +225,15 @@ function createServerCard(server, isLarge = false) {
         div.className = 'server-card';
     }
     
-    // Название + счётчик объявлений
     const count = adCountsCache[server.name] || 0;
-    div.innerHTML = `
-        <div style="font-weight:700;font-size:inherit;">\${server.name}</div>
-        <div style="font-size:12px;opacity:0.75;margin-top:4px;">\${count > 0 ? '📋 ' + count + ' объявл.' : '📋 0 объявл.'}</div>
-    `;
+    const countText = count > 0 ? ('📋 ' + count + ' объявл.') : '📋 0 объявл.';
+    if (isLarge) {
+        div.innerHTML = '<div style="font-weight:700;font-size:32px;">' + server.name + '</div>'
+            + '<div style="font-size:13px;opacity:0.7;margin-top:6px;">' + countText + '</div>';
+    } else {
+        div.innerHTML = '<div style="font-weight:700;">' + server.name + '</div>'
+            + '<div style="font-size:11px;opacity:0.7;margin-top:4px;">' + countText + '</div>';
+    }
 
     let mainColor = server.color;
     let darkColor;
@@ -461,7 +464,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Ошибка проверки бана:', e);
     }
 
-    // Загружаем счётчики объявлений
     await loadAdCounts();
 
     const lastServer = getLastServer();
