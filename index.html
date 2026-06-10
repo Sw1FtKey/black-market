@@ -46,11 +46,10 @@
             <div class="sidebar-avatar-edit" id="sidebarAvatarEdit" title="Сменить аватар">✏️</div>
             <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
         </div>
-        <div class="profile-sidebar-info" style="cursor:pointer;" onclick="goToMyProfile()">
+        <div class="profile-sidebar-info">
             <span class="profile-sidebar-name" id="sidebarNickname">Player</span>
             <span class="profile-sidebar-server" id="sidebarServer">Сервер</span>
             <span class="role-badge hidden" id="sidebarRoleBadge"></span>
-            <span style="font-size:11px;color:#555;margin-top:2px;">Открыть профиль →</span>
         </div>
     </div>
 
@@ -77,6 +76,9 @@
         </a>
 
         <div class="sidebar-section-label">Аккаунт</div>
+        <a href="#" class="profile-menu-item" id="myProfileMenuItem" onclick="goToMyProfile(); return false;">
+            <span class="menu-icon">👤</span><span>Мой профиль</span>
+        </a>
         <a href="chat.html" class="profile-menu-item" id="chatMenuItem">
             <span class="menu-icon">💬</span><span>Сообщения</span>
             <span class="menu-badge hidden" id="chatCount">0</span>
