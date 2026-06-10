@@ -4819,6 +4819,10 @@ input, textarea, select {
     }
 }
 
+/* ── Счётчик объявлений в карточке сервера ── */
+.server-card-name { font-weight: 700; }
+.server-card-count { font-size: 11px; opacity: 0.75; }
+
 /* ── Серверная сетка — мобильный список ── */
 @media (max-width: 768px) {
     .servers-grid {
@@ -4842,7 +4846,8 @@ input, textarea, select {
         min-height: 52px !important;
         padding: 0 14px !important;
         justify-content: flex-start !important;
-        gap: 14px;
+        flex-direction: row !important;
+        gap: 10px !important;
         font-size: 15px !important;
         font-weight: 500 !important;
         letter-spacing: 0 !important;
@@ -4852,6 +4857,11 @@ input, textarea, select {
         transform: none !important;
         opacity: 1 !important;
         position: relative;
+    }
+    .servers-grid .server-card .server-card-count {
+        font-size: 12px;
+        opacity: 0.55;
+        margin-left: auto;
     }
 
     .servers-grid .server-card:last-child {

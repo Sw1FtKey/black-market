@@ -228,8 +228,8 @@ function createServerCard(server, isLarge = false) {
     div.style.alignItems = 'center';
     div.style.justifyContent = 'center';
     div.style.gap = '4px';
-    div.innerHTML = '<div style="font-weight:700;">' + server.name + '</div>'
-        + '<div style="font-size:11px;opacity:0.75;">' + countText + '</div>';
+    div.innerHTML = '<div class="server-card-name">' + server.name + '</div>'
+        + '<div class="server-card-count">' + countText + '</div>';
 
     let mainColor = server.color;
     let darkColor;
