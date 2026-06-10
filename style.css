@@ -237,7 +237,7 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background-image: url('Fon.jpg');
+    background-image: url('Fon.webp');
     background-size: cover;
     background-position: center;
     position: relative;
@@ -341,7 +341,7 @@ body {
     padding: 40px;
     min-height: 100vh;
     position: relative;
-    background-image: url('Fon2.jpg');
+    background-image: url('Fon2.webp');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
