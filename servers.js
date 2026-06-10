@@ -1,6 +1,5 @@
 // ===== ИМПОРТ FIREBASE =====
 import { db } from './firebase-config.js';
-import { getAllAds } from './api.js';
 import { ZBT_MODE, ZBT_SERVER } from './firebase-config.js';
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -99,30 +98,11 @@ const ALL_SERVERS = [
     { name: "NORILSK", color: "#4fc3f7" }
 ];
 
-// Кэш количества объявлений по серверам
-let adCountsCache = {};
-
 // Активный список серверов — зависит от режима
 const ZBT_SERVERS = [
     { name: ZBT_SERVER, color: '#ff1e1e' }
 ];
 const servers = ZBT_MODE ? ZBT_SERVERS : ALL_SERVERS;
-
-// Загружаем количество объявлений по серверам
-async function loadAdCounts() {
-    try {
-        const ads = await getAllAds();
-        adCountsCache = {};
-        ads.forEach(ad => {
-            if (ad.server) {
-                const s = ad.server.toUpperCase();
-                adCountsCache[s] = (adCountsCache[s] || 0) + 1;
-            }
-        });
-    } catch (e) {
-        console.error('Ошибка загрузки счётчиков:', e);
-    }
-}
 
 // Функция для затемнения цвета
 function darkenColor(hex, percent) {
@@ -225,15 +205,7 @@ function createServerCard(server, isLarge = false) {
         div.className = 'server-card';
     }
     
-    const count = adCountsCache[server.name] || 0;
-    const countText = count > 0 ? ('📋 ' + count + ' объявл.') : '📋 0 объявл.';
-    if (isLarge) {
-        div.innerHTML = '<div style="font-weight:700;font-size:32px;">' + server.name + '</div>'
-            + '<div style="font-size:13px;opacity:0.7;margin-top:6px;">' + countText + '</div>';
-    } else {
-        div.innerHTML = '<div style="font-weight:700;">' + server.name + '</div>'
-            + '<div style="font-size:11px;opacity:0.7;margin-top:4px;">' + countText + '</div>';
-    }
+    div.textContent = server.name;
 
     let mainColor = server.color;
     let darkColor;
@@ -463,8 +435,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.error('Ошибка проверки бана:', e);
     }
-
-    await loadAdCounts();
 
     const lastServer = getLastServer();
     
