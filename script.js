@@ -673,7 +673,7 @@ async function showMyAds() {
     
     adsGrid.innerHTML = myAds.map(ad => createMyAdCard(ad)).join('');
     
-    document.querySelectorAll('.ad-card').forEach(card => {
+    document.querySelectorAll('.listing-card').forEach(card => {
         card.addEventListener('click', async (e) => {
             if (e.target.closest('.my-ad-actions')) return;
             const adId = parseInt(card.dataset.id);
@@ -894,7 +894,75 @@ document.getElementById('addAdButton')?.addEventListener('click', () => {
     window.location.href = 'create-ad.html';
 });
 
-// Редактирование профиля перенесено на страницу profile.html
+// ── Смена пароля — показываем подтверждение ──
+document.getElementById('editPasswordNew')?.addEventListener('input', function() {
+    const confirmGroup = document.getElementById('editPasswordConfirmGroup');
+    if (confirmGroup) confirmGroup.style.display = this.value.length > 0 ? 'flex' : 'none';
+});
+
+// ── Сохранение профиля ──
+document.getElementById('saveProfileBtn')?.addEventListener('click', async () => {
+    const telegram = document.getElementById('editTelegram')?.value.trim();
+    const newPass  = document.getElementById('editPasswordNew')?.value;
+    const confPass = document.getElementById('editPasswordConfirm')?.value;
+
+    if (newPass && newPass !== confPass) {
+        showToast('Пароли не совпадают', 'error'); return;
+    }
+    if (newPass && newPass.length < 6) {
+        showToast('Пароль минимум 6 символов', 'error'); return;
+    }
+
+    const btn = document.getElementById('saveProfileBtn');
+    btn.textContent = 'Сохраняю...';
+    btn.disabled = true;
+
+    try {
+        // Обновляем данные в Firestore
+        const { getUsers, saveUsers } = await import('./api.js');
+        const users = await getUsers();
+        const idx = users.findIndex(u => u.nickname === currentUser.nickname);
+        if (idx !== -1) {
+            if (telegram !== undefined) users[idx].telegram = telegram;
+            if (_pendingAvatar)         users[idx].avatar   = _pendingAvatar;
+            await saveUsers(users);
+            invalidateCache('users'); // сбрасываем кэш чтобы при следующем входе взялись свежие данные
+        }
+
+        // Обновляем Firebase Auth пароль если нужно
+        if (newPass) {
+            const { updatePassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            await updatePassword(auth.currentUser, newPass);
+        }
+
+        // Обновляем localStorage и currentUser
+        const freshAvatar = _pendingAvatar || currentUser.avatar;
+        Object.assign(currentUser, { telegram, avatar: freshAvatar });
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        // Дополнительно храним аватар отдельно — надёжнее чем в объекте пользователя
+        if (freshAvatar) localStorage.setItem(`avatar_${currentUser.nickname}`, freshAvatar);
+        _pendingAvatar = null;
+        // Перерисовываем шапку с новым аватаром
+        initSidebarHeader();
+
+        showToast('Профиль сохранён!', 'success');
+        document.getElementById('editPasswordNew').value = '';
+        document.getElementById('editPasswordConfirm').value = '';
+        document.getElementById('editPasswordConfirmGroup').style.display = 'none';
+
+    } catch (e) {
+        console.error('Ошибка сохранения профиля:', e);
+        showToast('Ошибка сохранения', 'error');
+    } finally {
+        btn.textContent = 'Сохранить изменения';
+        btn.disabled = false;
+    }
+});
+
+// ── Загрузка аватара ──
+let _pendingAvatar = null;
+
+// Загрузка аватара перенесена на страницу профиля (кнопка "Редактировать профиль")
 
 // ── Статистика в шторке (ленивая загрузка) ──
 let _sidebarStatsLoaded = false;
@@ -1055,9 +1123,9 @@ function createAdCard(ad) {
     const photoBadge = ad.photos?.length ? `<span class="photo-badge">📷 ${ad.photos.length}</span>` : '';
     
     return `
-        <div class="ad-card" data-id="${ad.id}">
-            <div class="ad-header">
-                <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
+        <div class="listing-card" data-id="${ad.id}">
+            <div class="item-header">
+                <span class="item-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
                 </span>
                 <div style="display:flex;align-items:center;gap:6px;">
@@ -1069,11 +1137,11 @@ function createAdCard(ad) {
                     </button>
                 </div>
             </div>
-            <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
-            <p class="ad-price">${priceFormatted}</p>
-            <p class="ad-description">${escapeHtml(ad.description || 'Нет описания')}</p>
-            <div class="ad-footer">
-                <span class="ad-author seller-link" onclick="event.stopPropagation(); window.location.href='profile.html?user=${encodeURIComponent(ad.author)}'">${escapeHtml(ad.author)}</span>
+            <h3 class="item-title">${escapeHtml(ad.title)}</h3>
+            <p class="item-price">${priceFormatted}</p>
+            <p class="item-desc">${escapeHtml(ad.description || 'Нет описания')}</p>
+            <div class="item-footer">
+                <span class="item-author seller-link" onclick="event.stopPropagation(); window.location.href='profile.html?user=${encodeURIComponent(ad.author)}'">${escapeHtml(ad.author)}</span>
                <span class="ad-date" title="${new Date(ad.createdAt).toLocaleString('ru-RU')}">${timeAgo(ad.createdAt)}</span>
             </div>
             <p class="ad-hint">Нажмите для подробностей</p>
@@ -1101,17 +1169,17 @@ function createMyAdCard(ad) {
     const photoBadge = ad.photos?.length ? `<span class="photo-badge">📷 ${ad.photos.length}</span>` : '';
     
     return `
-        <div class="ad-card my-ad-card" data-id="${ad.id}">
-            <div class="ad-header">
-                <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
+        <div class="listing-card my-listing-card" data-id="${ad.id}">
+            <div class="item-header">
+                <span class="item-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
                 </span>
                 ${photoBadge}
             </div>
-            <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
-            <p class="ad-price">${priceFormatted}</p>
-            <p class="ad-description">${escapeHtml(ad.description || 'Нет описания')}</p>
-            <div class="ad-footer">
+            <h3 class="item-title">${escapeHtml(ad.title)}</h3>
+            <p class="item-price">${priceFormatted}</p>
+            <p class="item-desc">${escapeHtml(ad.description || 'Нет описания')}</p>
+            <div class="item-footer">
                 <span class="ad-date">${date}${updated}</span>
             </div>
             <div class="my-ad-actions">
@@ -1146,7 +1214,7 @@ async function renderAds() {
     // Скелетон только при первой загрузке — потом не мигаем
     if (_adsFirstLoad) {
         adsGrid.innerHTML = Array(6).fill(0).map(() => `
-            <div class="ad-card skeleton-card" style="pointer-events:none;">
+            <div class="listing-card skeleton-card" style="pointer-events:none;">
                 <div class="skeleton-img" style="width:100%;height:160px;border-radius:10px;
                     background:linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%);
                     background-size:200% 100%;animation:skeletonShimmer 1.4s infinite;"></div>
@@ -1232,7 +1300,7 @@ async function renderAds() {
         adsGrid.appendChild(loadMoreBtn);
     }
 
-    document.querySelectorAll('.ad-card').forEach(card => {
+    document.querySelectorAll('.listing-card').forEach(card => {
         card.addEventListener('click', async () => {
             const adId = parseInt(card.dataset.id);
             const allAds = await getAllAds();
@@ -1898,7 +1966,7 @@ window.openSellerPage = async function(nickname) {
 window.toggleFavCard = function(adId) {
     const id = Number(adId);
     const isNowFav = toggleFavorite(id);
-    const btn = document.querySelector(`.ad-card[data-id="${id}"] .fav-btn`);
+    const btn = document.querySelector(`.listing-card[data-id="${id}"] .fav-btn`);
     if (btn) {
         btn.classList.toggle('active', isNowFav);
         const path = btn.querySelector('path');
@@ -1934,7 +2002,7 @@ async function showFavorites() {
     }
     
     adsGrid.innerHTML = favAds.map(ad => createAdCard(ad)).join('');
-    document.querySelectorAll('.ad-card').forEach(card => {
+    document.querySelectorAll('.listing-card').forEach(card => {
         card.addEventListener('click', async () => {
             const adId = parseInt(card.dataset.id);
             const ads = await getAllAds();
