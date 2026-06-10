@@ -1165,7 +1165,7 @@ window.openUserCard = async function(nickname) {
                         style="padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;
                         ${role === r
                             ? 'background:rgba(255,30,30,0.2);border:1px solid rgba(255,30,30,0.4);color:#ff6b6b;'
-                            : 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;'
+                            : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;'
                         }">${r}</button>
                 `).join('')}
             </div>
@@ -1182,7 +1182,7 @@ window.openUserCard = async function(nickname) {
                         style="padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;
                         ${has
                             ? `background:${cfg.color}25;border:1px solid ${cfg.color}60;color:${cfg.color};`
-                            : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#555;'
+                            : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#aaa;'
                         }">${cfg.icon} ${cfg.label}</button>`;
                 }).join('')}
             </div>
