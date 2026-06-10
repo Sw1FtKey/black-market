@@ -862,6 +862,13 @@ function openProfileMenu() {
     document.body.style.overflow = 'hidden';
 }
 
+window.goToMyProfile = function() {
+    const user = JSON.parse(localStorage.getItem("currentUser"));
+    if (user?.nickname) {
+        window.location.href = "profile.html?user=" + encodeURIComponent(user.nickname);
+    }
+};
+
 function closeProfileMenu() {
     profileMenu.classList.add('hidden');
     profileOverlay.classList.add('hidden');

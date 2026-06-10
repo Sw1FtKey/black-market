@@ -46,10 +46,11 @@
             <div class="sidebar-avatar-edit" id="sidebarAvatarEdit" title="Сменить аватар">✏️</div>
             <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
         </div>
-        <div class="profile-sidebar-info">
+        <div class="profile-sidebar-info" style="cursor:pointer;" onclick="goToMyProfile()">
             <span class="profile-sidebar-name" id="sidebarNickname">Player</span>
             <span class="profile-sidebar-server" id="sidebarServer">Сервер</span>
             <span class="role-badge hidden" id="sidebarRoleBadge"></span>
+            <span style="font-size:11px;color:#555;margin-top:2px;">Открыть профиль →</span>
         </div>
     </div>
 
@@ -221,7 +222,7 @@
             <!-- Аватар (просто показываем, без загрузки) -->
             <div class="avatar-upload-section">
                 <div class="current-avatar" id="editAvatarPreview">
-                   
+                    <img src="images.jpg" alt="Аватар" style="width:100%;height:100%;object-fit:cover;">
                 </div>
             </div>
 
