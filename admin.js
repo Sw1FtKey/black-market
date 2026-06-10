@@ -92,6 +92,10 @@ function canDo(action) {
     return lvl >= (required[action] || 99);
 }
 
+function isOwner() {
+    return myRole === 'owner';
+}
+
 // ===== ДАННЫЕ =====
 async function getAllAds() {
     try {
@@ -202,8 +206,7 @@ function renderTabsForRole() {
     if (canDo('ban')) html += `<button class="tab-btn" data-tab="bans" onclick="switchTab('bans')">🔨 Баны</button>`;
     if (canDo('logs')) html += `<button class="tab-btn" data-tab="logs" onclick="switchTab('logs')">📜 Журнал</button>`;
     if (canDo('platform_stats')) html += `<button class="tab-btn" data-tab="platform" onclick="switchTab('platform')">📊 Платформа</button>`;
-    if (canDo('manage_roles')) html += `<button class="tab-btn" data-tab="roles" onclick="switchTab('roles')">👥 Роли</button>`;
-    if (canDo('manage_roles')) html += `<button class="tab-btn" data-tab="badges" onclick="switchTab('badges')">🏅 Бейджи</button>`;
+    if (isOwner()) html += `<button class="tab-btn" data-tab="users" onclick="switchTab('users')">👤 Пользователи</button>`;
     if (canDo('logs')) html += `<button class="tab-btn" data-tab="bugreports" onclick="switchTab('bugreports')">🐛 Баг-репорты</button>`;
     tabs.innerHTML = html;
 }
@@ -230,6 +233,7 @@ window.switchTab = async function(tab) {
     document.getElementById('platformPanel')?.classList.add('hidden');
     document.getElementById('rolesPanel')?.classList.add('hidden');
     document.getElementById('badgesPanel')?.classList.add('hidden');
+    document.getElementById('usersPanel')?.classList.add('hidden');
     document.getElementById('bugReportsPanel')?.classList.add('hidden');
     document.getElementById('massActionsPanel')?.classList.add('hidden');
 
@@ -237,8 +241,7 @@ window.switchTab = async function(tab) {
     else if (tab === 'logs') { document.getElementById('logsList')?.classList.remove('hidden'); await loadLogs(); }
     else if (tab === 'bans') { document.getElementById('bansPanel')?.classList.remove('hidden'); await loadBans(); }
     else if (tab === 'platform') { document.getElementById('platformPanel')?.classList.remove('hidden'); await loadPlatformStats(); }
-    else if (tab === 'roles') { document.getElementById('rolesPanel')?.classList.remove('hidden'); await loadRoles(); }
-    else if (tab === 'badges') { document.getElementById('badgesPanel')?.classList.remove('hidden'); await loadBadgesPanel(); }
+    else if (tab === 'users') { document.getElementById('usersPanel')?.classList.remove('hidden'); await loadUsersPanel(); }
     else if (tab === 'bugreports') { document.getElementById('bugReportsPanel')?.classList.remove('hidden'); await loadBugReports(); }
 };
 
@@ -993,7 +996,7 @@ window.filterBadgeNicks = function(val) {
 window.filterBadgeUserList = function(val) {
     renderBadgeUserList(window._badgeUsers || [], val);
 };
-
+}
 
 window.grantBadge = async function() {
     if (!requireRole('manage_roles')) return;
@@ -1031,6 +1034,208 @@ window.revokeBadge = async function() {
     await saveAdminLog({ type: 'revoke_badge', target: nick, details: `Бейдж: ${BADGES_CONFIG[key]?.label}` });
     showToast(`Бейдж "${BADGES_CONFIG[key]?.label}" забран у ${nick}`, 'success');
     await loadBadgesPanel();
+};
+
+// ─────────────────────────────────────────────
+// 👤 ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ (только owner)
+// ─────────────────────────────────────────────
+async function loadUsersPanel() {
+    const panel = document.getElementById('usersPanel');
+    if (!panel) return;
+
+    const [users, ads, roles] = await Promise.all([getUsers(), getAllAds(), getDoc(doc(db, 'data', 'roles'))]);
+    const rolesMap = roles.exists() ? (roles.data().items || {}) : {};
+    const adCounts = {};
+    ads.forEach(a => { adCounts[a.author] = (adCounts[a.author] || 0) + 1; });
+
+    window._adminUsers = users;
+    window._adminRolesMap = rolesMap;
+    window._adminAdCounts = adCounts;
+
+    panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <h3 style="color:white;margin:0;">👤 Пользователи (${users.length})</h3>
+        <input id="userSearchInput" placeholder="Поиск по нику..."
+            oninput="filterUsersTable(this.value)"
+            style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;width:200px;">
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <thead>
+                <tr style="background:rgba(255,255,255,0.04);color:#888;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">
+                    <th style="padding:10px 14px;text-align:left;font-weight:500;">Ник</th>
+                    <th style="padding:10px 12px;text-align:left;font-weight:500;">Роль</th>
+                    <th style="padding:10px 12px;text-align:left;font-weight:500;">Сервер</th>
+                    <th style="padding:10px 12px;text-align:center;font-weight:500;">Объявлений</th>
+                    <th style="padding:10px 12px;text-align:right;font-weight:500;">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+        </table>
+    </div>`;
+
+    renderUsersTable(users, rolesMap, adCounts);
+}
+
+function renderUsersTable(users, rolesMap, adCounts) {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+
+    const ROLE_COLORS = { owner: '#ffd700', admin: '#e05fff', moder: '#5b9dff' };
+
+    tbody.innerHTML = users.map(u => {
+        const role = rolesMap[u.nickname] || rolesMap[u.nickname?.toLowerCase()] || 'user';
+        const roleColor = ROLE_COLORS[role] || '#666';
+        const adCount = adCounts[u.nickname] || 0;
+        const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—';
+        const badges = u.badges?.length ? `<span style="color:#555;font-size:12px;">🏅 ${u.badges.length}</span>` : '';
+
+        return `<tr style="border-top:1px solid rgba(255,255,255,0.05);transition:background 0.15s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.03)'"
+            onmouseout="this.style.background=''">
+            <td style="padding:10px 14px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,30,30,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ff6b6b;font-size:12px;flex-shrink:0;">${u.nickname?.charAt(0).toUpperCase()}</div>
+                    <span style="color:white;font-weight:500;">${escapeHtml(u.nickname)}</span>
+                    ${badges}
+                </div>
+            </td>
+            <td style="padding:10px 12px;">
+                <span style="background:${roleColor}18;color:${roleColor};border:1px solid ${roleColor}40;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;">${role}</span>
+            </td>
+            <td style="padding:10px 12px;color:#888;">${escapeHtml(u.server || '—')}</td>
+            <td style="padding:10px 12px;text-align:center;color:#aaa;">${adCount}</td>
+            <td style="padding:10px 12px;text-align:right;">
+                <button onclick="openUserCard('${escapeHtml(u.nickname)}')"
+                    style="padding:6px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ccc;font-size:13px;cursor:pointer;">
+                    Открыть
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+window.filterUsersTable = function(val) {
+    const users = (window._adminUsers || []).filter(u =>
+        u.nickname?.toLowerCase().includes(val.toLowerCase())
+    );
+    renderUsersTable(users, window._adminRolesMap || {}, window._adminAdCounts || {});
+};
+
+window.openUserCard = async function(nickname) {
+    const users = window._adminUsers || [];
+    const u = users.find(u => u.nickname === nickname);
+    if (!u) return;
+
+    const rolesMap = window._adminRolesMap || {};
+    const adCounts = window._adminAdCounts || {};
+    const role = rolesMap[nickname] || rolesMap[nickname?.toLowerCase()] || 'user';
+    const adCount = adCounts[nickname] || 0;
+    const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—';
+
+    const existing = document.getElementById('userCardModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'userCardModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = `
+    <div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h3 style="color:white;margin:0;">Пользователь</h3>
+            <button onclick="document.getElementById('userCardModal').remove()"
+                style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;">✕</button>
+        </div>
+
+        <!-- Инфо -->
+        <div style="display:flex;align-items:center;gap:14px;padding:16px;background:rgba(255,255,255,0.03);border-radius:12px;margin-bottom:16px;">
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,30,30,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#ff6b6b;flex-shrink:0;">${nickname.charAt(0).toUpperCase()}</div>
+            <div>
+                <div style="color:white;font-size:18px;font-weight:600;">${escapeHtml(nickname)}</div>
+                <div style="color:#666;font-size:13px;margin-top:2px;">Сервер: ${escapeHtml(u.server || '—')} · Рег: ${regDate} · Объявлений: ${adCount}</div>
+            </div>
+        </div>
+
+        <!-- Роль -->
+        <div style="margin-bottom:14px;">
+            <label style="color:#888;font-size:12px;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Роль</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${['user','moder','admin','owner'].map(r => `
+                    <button onclick="setUserRole('${escapeHtml(nickname)}', '${r}')"
+                        style="padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;
+                        ${role === r
+                            ? 'background:rgba(255,30,30,0.2);border:1px solid rgba(255,30,30,0.4);color:#ff6b6b;'
+                            : 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;'
+                        }">${r}</button>
+                `).join('')}
+            </div>
+        </div>
+
+        <!-- Бейджи -->
+        <div style="margin-bottom:14px;">
+            <label style="color:#888;font-size:12px;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Бейджи</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                ${Object.entries(BADGES_CONFIG).map(([key, cfg]) => {
+                    const has = u.badges?.includes(key);
+                    return `<button onclick="toggleUserBadge('${escapeHtml(nickname)}', '${key}')"
+                        title="${cfg.label}"
+                        style="padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;
+                        ${has
+                            ? `background:${cfg.color}25;border:1px solid ${cfg.color}60;color:${cfg.color};`
+                            : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#555;'
+                        }">${cfg.icon} ${cfg.label}</button>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);">
+            <a href="profile.html?nick=${encodeURIComponent(nickname)}" target="_blank"
+                style="padding:9px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ccc;font-size:13px;text-decoration:none;">
+                👤 Профиль
+            </a>
+            <button onclick="openPunishModal('${escapeHtml(nickname)}')"
+                style="padding:9px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;color:#ffa726;font-size:13px;cursor:pointer;">
+                🔨 Наказать
+            </button>
+        </div>
+    </div>`;
+
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+};
+
+window.setUserRole = async function(nickname, role) {
+    const roles = await getDoc(doc(db, 'data', 'roles'));
+    const items = roles.exists() ? (roles.data().items || {}) : {};
+    if (role === 'user') {
+        delete items[nickname];
+        delete items[nickname.toLowerCase()];
+    } else {
+        items[nickname] = role;
+    }
+    await setDoc(doc(db, 'data', 'roles'), { items });
+    await saveAdminLog({ type: 'set_role', target: nickname, details: `Роль → ${role}` });
+    window._adminRolesMap = items;
+    showToast(`Роль ${nickname} → ${role}`, 'success');
+    // Обновляем кнопки в карточке
+    document.getElementById('userCardModal')?.remove();
+    openUserCard(nickname);
+};
+
+window.toggleUserBadge = async function(nickname, key) {
+    const users = await getUsers();
+    const idx = users.findIndex(u => u.nickname === nickname);
+    if (idx === -1) return;
+    const badges = users[idx].badges || [];
+    const has = badges.includes(key);
+    users[idx].badges = has ? badges.filter(b => b !== key) : [...badges, key];
+    await saveUsers(users);
+    await saveAdminLog({ type: has ? 'revoke_badge' : 'grant_badge', target: nickname, details: BADGES_CONFIG[key]?.label });
+    window._adminUsers = users;
+    showToast(`${has ? 'Забран' : 'Выдан'}: ${BADGES_CONFIG[key]?.label}`, 'success');
+    document.getElementById('userCardModal')?.remove();
+    openUserCard(nickname);
 };
 
 async function loadRoles() {
