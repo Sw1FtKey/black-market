@@ -1,5 +1,6 @@
 // ===== ИМПОРТ FIREBASE =====
 import { db } from './firebase-config.js';
+import { getAllAds } from './api.js';
 import { ZBT_MODE, ZBT_SERVER } from './firebase-config.js';
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -98,11 +99,26 @@ const ALL_SERVERS = [
     { name: "NORILSK", color: "#4fc3f7" }
 ];
 
+let adCountsCache = {};
+
 // Активный список серверов — зависит от режима
 const ZBT_SERVERS = [
     { name: ZBT_SERVER, color: '#ff1e1e' }
 ];
 const servers = ZBT_MODE ? ZBT_SERVERS : ALL_SERVERS;
+
+async function loadAdCounts() {
+    try {
+        const ads = await getAllAds();
+        adCountsCache = {};
+        ads.forEach(ad => {
+            if (ad.server) {
+                const s = ad.server.toUpperCase();
+                adCountsCache[s] = (adCountsCache[s] || 0) + 1;
+            }
+        });
+    } catch (e) { console.error('Ошибка загрузки счётчиков:', e); }
+}
 
 // Функция для затемнения цвета
 function darkenColor(hex, percent) {
@@ -205,7 +221,15 @@ function createServerCard(server, isLarge = false) {
         div.className = 'server-card';
     }
     
-    div.textContent = server.name;
+    const count = adCountsCache[server.name] || 0;
+    const countText = '📋 ' + count + ' объявл.';
+    div.style.display = 'flex';
+    div.style.flexDirection = 'column';
+    div.style.alignItems = 'center';
+    div.style.justifyContent = 'center';
+    div.style.gap = '4px';
+    div.innerHTML = '<div style="font-weight:700;">' + server.name + '</div>'
+        + '<div style="font-size:11px;opacity:0.75;">' + countText + '</div>';
 
     let mainColor = server.color;
     let darkColor;
@@ -435,6 +459,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.error('Ошибка проверки бана:', e);
     }
+
+    await loadAdCounts();
 
     const lastServer = getLastServer();
     
