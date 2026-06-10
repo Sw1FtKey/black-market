@@ -962,35 +962,7 @@ document.getElementById('saveProfileBtn')?.addEventListener('click', async () =>
 // ── Загрузка аватара ──
 let _pendingAvatar = null;
 
-document.getElementById('avatarFileInput')?.addEventListener('change', async function() {
-    const file = this.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { showToast('Файл слишком большой (макс. 2MB)', 'error'); return; }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        // Сжимаем аватар до 200px — для аватара достаточно
-        const compressed = await compressImage(e.target.result, 200, 0.8);
-        _pendingAvatar = compressed;
-
-        // Обновляем превью везде
-        const imgHtml = `<img src="${compressed}" alt="avatar">`;
-        const circle  = document.getElementById('sidebarAvatarCircle');
-        const preview = document.getElementById('avatarPreviewCircle');
-        const header  = document.getElementById('headerAvatarCircle');
-        if (circle)  circle.innerHTML  = imgHtml;
-        if (preview) preview.innerHTML = imgHtml;
-        if (header)  header.innerHTML  = imgHtml;
-        showToast('Фото выбрано — нажми "Сохранить"', 'info');
-    };
-    reader.readAsDataURL(file);
-});
-
-// Клик на аватар в шапке → открывает выбор файла
-document.getElementById('sidebarAvatarEdit')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('avatarFileInput')?.click();
-});
+// Загрузка аватара перенесена на страницу профиля (кнопка "Редактировать профиль")
 
 // ── Статистика в шторке (ленивая загрузка) ──
 let _sidebarStatsLoaded = false;

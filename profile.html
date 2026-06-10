@@ -252,6 +252,126 @@
             .profile-stat:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,0.06); }
             .profile-hero-name { font-size: 20px; }
         }
+
+        /* ── Кнопка редактировать профиль ── */
+        .profile-edit-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            background: rgba(255,255,255,0.06);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+            text-decoration: none;
+        }
+        .profile-edit-btn:hover { background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.2); }
+
+        /* ── Модалка редактирования ── */
+        .edit-profile-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .edit-profile-modal {
+            background: #111;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 420px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .edit-profile-modal h3 {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 20px;
+        }
+        .edit-profile-field { margin-bottom: 16px; }
+        .edit-profile-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .edit-profile-field input {
+            width: 100%;
+            padding: 11px 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .edit-profile-field input:focus { outline: none; border-color: rgba(255,30,30,0.5); }
+        .edit-profile-field input:disabled { color: #555; cursor: not-allowed; }
+        .edit-profile-hint { font-size: 12px; color: #555; margin-top: 5px; }
+        .edit-profile-save {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #ff1e1e, #cc0000);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s;
+        }
+        .edit-profile-save:hover { opacity: 0.88; }
+        .edit-profile-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        .edit-avatar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .edit-avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff1e1e, #800000);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            overflow: hidden;
+            border: 2px solid rgba(255,30,30,0.35);
+        }
+        .edit-avatar-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .edit-avatar-btn {
+            padding: 8px 18px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .edit-avatar-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+        .edit-avatar-hint { font-size: 11px; color: #444; }
     </style>
 </head>
 <body class="main-body">
@@ -308,6 +428,52 @@
         <div id="tabAchievements" style="display:none;"></div>
     </div>
 
+</div>
+
+
+<!-- ── МОДАЛКА РЕДАКТИРОВАНИЯ ПРОФИЛЯ ── -->
+<div class="edit-profile-overlay" id="editProfileOverlay" style="display:none;">
+    <div class="edit-profile-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h3 style="margin:0;">✏️ Редактировать профиль</h3>
+            <button onclick="closeEditProfile()" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;">×</button>
+        </div>
+
+        <!-- Аватар -->
+        <div class="edit-avatar-section">
+            <div class="edit-avatar-preview" id="editAvatarPreview"></div>
+            <button class="edit-avatar-btn" onclick="document.getElementById('editAvatarInput').click()">📷 Загрузить фото</button>
+            <input type="file" id="editAvatarInput" accept="image/*" style="display:none">
+            <span class="edit-avatar-hint">JPG, PNG · до 2MB · рекомендуется квадратное</span>
+        </div>
+
+        <!-- Никнейм (disabled) -->
+        <div class="edit-profile-field">
+            <label>Никнейм</label>
+            <input type="text" id="editNicknameField" disabled>
+            <div class="edit-profile-hint">Никнейм изменить нельзя</div>
+        </div>
+
+        <!-- Telegram -->
+        <div class="edit-profile-field">
+            <label>Telegram</label>
+            <input type="text" id="editTelegramField" placeholder="@username">
+        </div>
+
+        <!-- Новый пароль -->
+        <div class="edit-profile-field">
+            <label>Новый пароль</label>
+            <input type="password" id="editPasswordField" placeholder="Оставь пустым если не меняешь">
+        </div>
+
+        <!-- Подтверждение пароля -->
+        <div class="edit-profile-field" id="editConfirmGroup" style="display:none;">
+            <label>Повтори пароль</label>
+            <input type="password" id="editConfirmField" placeholder="Повтори новый пароль">
+        </div>
+
+        <button class="edit-profile-save" id="editSaveBtn" onclick="saveEditProfile()">Сохранить изменения</button>
+    </div>
 </div>
 
 <script type="module" src="error-logger.js"></script>
@@ -493,12 +659,18 @@ function renderHero(userData, reviews, role) {
             `На сайте с ${date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`;
     }
 
-    // Кнопка написать — только если это не свой профиль
+    // Кнопки действий
     const actionsEl = document.getElementById('heroActions');
     if (currentUser && currentUser.nickname !== nickname) {
         actionsEl.innerHTML = `
             <button class="profile-write-btn" onclick="startChatWithUser()">
                 💬 Написать
+            </button>
+        `;
+    } else if (currentUser && currentUser.nickname === nickname) {
+        actionsEl.innerHTML = `
+            <button class="profile-edit-btn" onclick="openEditProfile()">
+                ✏️ Редактировать профиль
             </button>
         `;
     }
@@ -670,6 +842,144 @@ function renderAchievementsTab() {
     html += `</div>`;
     el.innerHTML = html;
 }
+
+// ══════════════════════════════════════════
+// РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+// ══════════════════════════════════════════
+import { getUsers, saveUsers } from './api.js';
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { compressImage } from './utils.js';
+
+let editAvatarData = null;
+
+window.openEditProfile = function() {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user) return;
+
+    // Заполняем поля
+    document.getElementById('editNicknameField').value = user.nickname || '';
+    document.getElementById('editTelegramField').value = user.telegram || '';
+    document.getElementById('editPasswordField').value = '';
+    document.getElementById('editConfirmField').value = '';
+    document.getElementById('editConfirmGroup').style.display = 'none';
+    editAvatarData = null;
+
+    // Аватар превью
+    const preview = document.getElementById('editAvatarPreview');
+    const avatar = user.avatar || localStorage.getItem(`avatar_${user.nickname}`);
+    if (avatar) {
+        preview.innerHTML = `<img src="${avatar}" alt="avatar">`;
+    } else {
+        preview.textContent = (user.nickname || '?').charAt(0).toUpperCase();
+    }
+
+    document.getElementById('editProfileOverlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeEditProfile = function() {
+    document.getElementById('editProfileOverlay').style.display = 'none';
+    document.body.style.overflow = '';
+};
+
+// Закрытие по клику на фон
+document.getElementById('editProfileOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeEditProfile();
+});
+
+// Закрытие по Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeEditProfile();
+});
+
+// Показываем поле подтверждения пароля при вводе
+document.getElementById('editPasswordField').addEventListener('input', function() {
+    document.getElementById('editConfirmGroup').style.display = this.value ? 'block' : 'none';
+});
+
+// Загрузка аватара
+document.getElementById('editAvatarInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Файл слишком большой. Максимум 2MB'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(ev) {
+        const compressed = await compressImage(ev.target.result, 400, 0.8);
+        editAvatarData = compressed;
+        const preview = document.getElementById('editAvatarPreview');
+        preview.innerHTML = `<img src="${compressed}" alt="avatar">`;
+    };
+    reader.readAsDataURL(file);
+});
+
+window.saveEditProfile = async function() {
+    const btn = document.getElementById('editSaveBtn');
+    const telegram = document.getElementById('editTelegramField').value.trim();
+    const newPassword = document.getElementById('editPasswordField').value;
+    const confirmPassword = document.getElementById('editConfirmField').value;
+
+    if (newPassword && newPassword !== confirmPassword) {
+        alert('Пароли не совпадают'); return;
+    }
+    if (newPassword && newPassword.length < 6) {
+        alert('Пароль слишком короткий (минимум 6 символов)'); return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Сохранение...';
+
+    try {
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+
+        // Обновляем пароль
+        if (newPassword) {
+            const firebaseUser = auth.currentUser;
+            if (firebaseUser) {
+                await updatePassword(firebaseUser, newPassword);
+            }
+        }
+
+        // Обновляем данные пользователя в Firestore
+        const users = await getUsers();
+        const idx = users.findIndex(u => u.nickname?.toLowerCase() === user.nickname?.toLowerCase());
+        if (idx !== -1) {
+            if (telegram !== undefined) users[idx].telegram = telegram;
+            if (editAvatarData) users[idx].avatar = editAvatarData;
+            await saveUsers(users);
+        }
+
+        // Обновляем localStorage
+        const updated = { ...user, telegram };
+        if (editAvatarData) {
+            updated.avatar = editAvatarData;
+            localStorage.setItem(`avatar_${user.nickname}`, editAvatarData);
+        }
+        localStorage.setItem('currentUser', JSON.stringify(updated));
+
+        // Обновляем аватар на странице профиля
+        if (editAvatarData) {
+            const heroAvatar = document.getElementById('heroAvatar');
+            heroAvatar.innerHTML = `<img src="${editAvatarData}" alt="avatar">`;
+        }
+
+        closeEditProfile();
+        // Показываем уведомление
+        const toast = document.createElement('div');
+        toast.textContent = '✓ Профиль обновлён';
+        toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #4caf5040;border-left:3px solid #4caf50;color:white;padding:14px 20px;border-radius:12px;z-index:99999;font-size:14px;font-weight:500;';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+
+    } catch (e) {
+        console.error('Ошибка сохранения:', e);
+        alert('Ошибка сохранения: ' + (e.message || 'Попробуй снова'));
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Сохранить изменения';
+    }
+};
 </script>
 </body>
 </html>
