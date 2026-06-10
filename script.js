@@ -673,7 +673,7 @@ async function showMyAds() {
     
     adsGrid.innerHTML = myAds.map(ad => createMyAdCard(ad)).join('');
     
-    document.querySelectorAll('.listing-card').forEach(card => {
+    document.querySelectorAll('.ad-card').forEach(card => {
         card.addEventListener('click', async (e) => {
             if (e.target.closest('.my-ad-actions')) return;
             const adId = parseInt(card.dataset.id);
@@ -698,33 +698,6 @@ const profileBox    = document.getElementById('profileBox');
 const profileMenu   = document.getElementById('profileMenu');
 const profileOverlay = document.getElementById('profileOverlay');
 
-// ── Синхронизация аватара из Firestore ──
-// Подтягивает актуальный аватар из базы и обновляет везде
-async function syncAvatarFromFirestore() {
-    if (!currentUser?.nickname) return;
-    try {
-        const users = await getUsers();
-        const user = users.find(u => u.nickname === currentUser.nickname);
-        if (!user?.avatar) return;
-
-        // Если аватар в Firestore отличается от локального — обновляем
-        if (user.avatar !== currentUser.avatar) {
-            currentUser.avatar = user.avatar;
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            localStorage.setItem(`avatar_${currentUser.nickname}`, user.avatar);
-
-            // Перерисовываем аватары везде
-            const img = `<img src="${user.avatar}" alt="avatar">`;
-            const headerCircle = document.getElementById('headerAvatarCircle');
-            const sidebarCircle = document.getElementById('sidebarAvatarCircle');
-            if (headerCircle) headerCircle.innerHTML = img;
-            if (sidebarCircle) sidebarCircle.innerHTML = img;
-        }
-    } catch(e) {
-        // Тихо падаем — это фоновая синхронизация
-    }
-}
-
 // ── Инициализация шапки шторки ──
 function initSidebarHeader() {
     if (!currentUser) return;
@@ -739,9 +712,6 @@ function initSidebarHeader() {
         currentUser.avatar = avatar;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
-
-    // Подгружаем актуальный аватар из Firestore в фоне
-    syncAvatarFromFirestore();
 
     // ── Кнопка в шапке сайта ──
     const profileBox = document.getElementById('profileBox');
@@ -1174,9 +1144,9 @@ function createAdCard(ad) {
     const photoBadge = ad.photos?.length ? `<span class="photo-badge">📷 ${ad.photos.length}</span>` : '';
     
     return `
-        <div class="listing-card" data-id="${ad.id}">
-            <div class="item-header">
-                <span class="item-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
+        <div class="ad-card" data-id="${ad.id}">
+            <div class="ad-header">
+                <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
                 </span>
                 <div style="display:flex;align-items:center;gap:6px;">
@@ -1188,14 +1158,14 @@ function createAdCard(ad) {
                     </button>
                 </div>
             </div>
-            <h3 class="item-title">${escapeHtml(ad.title)}</h3>
-            <p class="item-price">${priceFormatted}</p>
-            <p class="item-desc">${escapeHtml(ad.description || 'Нет описания')}</p>
-            <div class="item-footer">
-                <span class="item-author seller-link" onclick="event.stopPropagation(); window.location.href='profile.html?user=${encodeURIComponent(ad.author)}'">${escapeHtml(ad.author)}</span>
-               <span class="item-date" title="${new Date(ad.createdAt).toLocaleString('ru-RU')}">${timeAgo(ad.createdAt)}</span>
+            <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
+            <p class="ad-price">${priceFormatted}</p>
+            <p class="ad-description">${escapeHtml(ad.description || 'Нет описания')}</p>
+            <div class="ad-footer">
+                <span class="ad-author seller-link" onclick="event.stopPropagation(); window.location.href='profile.html?user=${encodeURIComponent(ad.author)}'">${escapeHtml(ad.author)}</span>
+               <span class="ad-date" title="${new Date(ad.createdAt).toLocaleString('ru-RU')}">${timeAgo(ad.createdAt)}</span>
             </div>
-            <p class="item-hint">Нажмите для подробностей</p>
+            <p class="ad-hint">Нажмите для подробностей</p>
         </div>
     `;
 }
@@ -1220,18 +1190,18 @@ function createMyAdCard(ad) {
     const photoBadge = ad.photos?.length ? `<span class="photo-badge">📷 ${ad.photos.length}</span>` : '';
     
     return `
-        <div class="listing-card my-listing-card" data-id="${ad.id}">
-            <div class="item-header">
-                <span class="item-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
+        <div class="ad-card my-ad-card" data-id="${ad.id}">
+            <div class="ad-header">
+                <span class="ad-category" style="background: ${catColor}20; color: ${catColor}; border: 1px solid ${catColor}40;">
                     ${catName}
                 </span>
                 ${photoBadge}
             </div>
-            <h3 class="item-title">${escapeHtml(ad.title)}</h3>
-            <p class="item-price">${priceFormatted}</p>
-            <p class="item-desc">${escapeHtml(ad.description || 'Нет описания')}</p>
-            <div class="item-footer">
-                <span class="item-date">${date}${updated}</span>
+            <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
+            <p class="ad-price">${priceFormatted}</p>
+            <p class="ad-description">${escapeHtml(ad.description || 'Нет описания')}</p>
+            <div class="ad-footer">
+                <span class="ad-date">${date}${updated}</span>
             </div>
             <div class="my-ad-actions">
                 <button class="edit-btn" onclick="event.stopPropagation(); editAd(${ad.id})">
@@ -1265,7 +1235,7 @@ async function renderAds() {
     // Скелетон только при первой загрузке — потом не мигаем
     if (_adsFirstLoad) {
         adsGrid.innerHTML = Array(6).fill(0).map(() => `
-            <div class="listing-card skeleton-card" style="pointer-events:none;">
+            <div class="ad-card skeleton-card" style="pointer-events:none;">
                 <div class="skeleton-img" style="width:100%;height:160px;border-radius:10px;
                     background:linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%);
                     background-size:200% 100%;animation:skeletonShimmer 1.4s infinite;"></div>
@@ -1314,7 +1284,7 @@ async function renderAds() {
         adsGrid.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon" style="font-size:40px;">📋</div>
-                <p class="empty-state-title">На сервере <span style="color:#ff1e1e">${user?.server || ''}</span> пока нет объявлений</p>
+                <p class="empty-state-title">На сервере <span style="color:#ff1e1e">${escapeHtml(user?.server || '')}</span> пока нет объявлений</p>
                 <p class="empty-state-hint">Будьте первым — создайте объявление и найдите покупателя!</p>
                 <a href="create-ad.html" class="empty-state-btn">+ Создать объявление</a>
             </div>
@@ -1351,7 +1321,7 @@ async function renderAds() {
         adsGrid.appendChild(loadMoreBtn);
     }
 
-    document.querySelectorAll('.listing-card').forEach(card => {
+    document.querySelectorAll('.ad-card').forEach(card => {
         card.addEventListener('click', async () => {
             const adId = parseInt(card.dataset.id);
             const allAds = await getAllAds();
@@ -1523,47 +1493,39 @@ function createModalContent(ad) {
         // Кнопка чата — только для чужих объявлений
         const chatBtn = !isOwn ? `
             <button onclick="startChat('${ad.author}', ${ad.id}, '${safeTitle}')"
-                style="flex:1; padding:12px 16px;
-                background:rgba(255,30,30,0.12);
-                border:1.5px solid rgba(255,30,30,0.35);
-                border-radius:12px; color:#ff6b6b; font-size:14px; font-weight:600;
-                cursor:pointer; transition:all 0.2s ease; white-space:nowrap;"
-                onmouseover="this.style.background='rgba(255,30,30,0.2)'"
-                onmouseout="this.style.background='rgba(255,30,30,0.12)'">
+                style="flex:1; padding:14px; background:linear-gradient(135deg,#ff1e1e 0%,#cc0000 100%);
+                border:none; border-radius:12px; color:white; font-size:15px; font-weight:600;
+                cursor:pointer; transition:all 0.3s ease;"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(255,30,30,0.4)'"
+                onmouseout="this.style.transform=''; this.style.boxShadow=''">
                 💬 Написать продавцу
             </button>` : '';
 
-        // TG + копировать — компактные круглые кнопки
+        // TG-ссылка — всегда если указан контакт (и для своих и для чужих)
         const tgBtn = ad.contact ? `
-            <a href="https://t.me/${encodeURIComponent(ad.contact)}" target="_blank"
-                title="@${escapeHtml(String(ad.contact))}"
-                style="width:44px;height:44px;border-radius:50%;flex-shrink:0;
-                background:#2AABEE;display:flex;align-items:center;justify-content:center;
-                text-decoration:none;transition:opacity 0.2s;"
-                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.325.015.093.034.305.019.471z"/>
-                </svg>
-            </a>
-            <button onclick="copyToClipboard('@${(ad.contact||'').replace(/'/g, "\\'")}'); event.stopPropagation();"
-                title="Копировать никнейм"
-                style="width:44px;height:44px;border-radius:50%;flex-shrink:0;
-                background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);
-                color:#aaa;display:flex;align-items:center;justify-content:center;
-                cursor:pointer;transition:all 0.2s;"
-                onmouseover="this.style.background='rgba(255,255,255,0.12)'"
-                onmouseout="this.style.background='rgba(255,255,255,0.07)'">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-            </button>` : '';
+            <div class="modal-contacts">
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <a href="https://t.me/${encodeURIComponent(ad.contact)}" target="_blank" class="telegram-link" style="flex:1;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.325.015.093.034.305.019.471z"/>
+                        </svg>
+                        <span>@${escapeHtml(String(ad.contact))}</span>
+                        <span class="telegram-action">Написать →</span>
+                    </a>
+                    <button class="copy-contact-btn" onclick="copyToClipboard('@${(ad.contact||'').replace(/'/g, "\\'")}'); event.stopPropagation();" title="Копировать">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>` : '';
 
         // Показываем блок если есть хоть одна кнопка
         if (chatBtn || tgBtn) {
             chatButtonHtml = `
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:15px;margin-top:14px;">
-                    ${chatBtn}
+                <div style="margin-bottom:15px;">
+                    ${chatBtn ? `<div style="margin-bottom:10px;">${chatBtn}</div>` : ''}
                     ${tgBtn}
                 </div>`;
         }
@@ -1907,7 +1869,7 @@ function renderHouseCard(ad) {
     if (ad.location) items += badge('📍 ' + escapeHtml(ad.location), 'blue');
     if (ad.upgrades) items += badge('🏠 Дом ' + escapeHtml(ad.upgrades), ad.upgrades === '5/5' ? 'green' : 'amber');
     if (ad.basement) items += badge('🏚 Подвал ' + escapeHtml(ad.basement), ad.basement === '5/5' ? 'green' : 'amber');
-    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">${items}</div>`;
+    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">${items}</div>`;
     html += '</div>';
     return html;
 }
@@ -1917,7 +1879,7 @@ function renderGarageCard(ad) {
     let items = '';
     if (ad.location) items += badge('📍 ' + escapeHtml(ad.location), 'blue');
     if (ad.upgrades) items += badge('🔧 Улучшения ' + escapeHtml(ad.upgrades), ad.upgrades === '5/5' ? 'green' : 'amber');
-    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">${items}</div>`;
+    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">${items}</div>`;
     html += '</div>';
     return html;
 }
@@ -1933,7 +1895,7 @@ function renderBusinessCard(ad) {
         const income = from && to ? `${from} — ${to}` : from ? `от ${from}` : `до ${to}`;
         if (income) items += badge('💰 ' + income + '/день', 'green');
     }
-    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">${items}</div>`;
+    if (items) html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">${items}</div>`;
     html += '</div>';
     return html;
 }
@@ -2025,7 +1987,7 @@ window.openSellerPage = async function(nickname) {
 window.toggleFavCard = function(adId) {
     const id = Number(adId);
     const isNowFav = toggleFavorite(id);
-    const btn = document.querySelector(`.listing-card[data-id="${id}"] .fav-btn`);
+    const btn = document.querySelector(`.ad-card[data-id="${id}"] .fav-btn`);
     if (btn) {
         btn.classList.toggle('active', isNowFav);
         const path = btn.querySelector('path');
@@ -2061,7 +2023,7 @@ async function showFavorites() {
     }
     
     adsGrid.innerHTML = favAds.map(ad => createAdCard(ad)).join('');
-    document.querySelectorAll('.listing-card').forEach(card => {
+    document.querySelectorAll('.ad-card').forEach(card => {
         card.addEventListener('click', async () => {
             const adId = parseInt(card.dataset.id);
             const ads = await getAllAds();
@@ -2079,7 +2041,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionStorage.removeItem('adJustCreated');
     }
 
-    // ЗБТ-баннер — добавлен статически в index.html
+    // 🚀 ЗБТ-баннер
+    if (ZBT_MODE) {
+        const banner = document.createElement('div');
+        banner.id = 'zbtBanner';
+        banner.style.cssText = `
+            position:fixed; top:0; left:0; right:0; z-index:9999;
+            background:linear-gradient(90deg, #1a0000, #2a0808, #1a0000);
+            border-bottom:1px solid rgba(255,30,30,0.3);
+            padding:7px 16px;
+            display:flex; align-items:center; justify-content:center; gap:10px;
+            font-size:13px; color:#ff8888;
+            animation: zbtPulse 3s ease-in-out infinite;
+        `;
+        banner.innerHTML = `
+            <style>
+                @keyframes zbtPulse {
+                    0%,100% { border-bottom-color: rgba(255,30,30,0.3); }
+                    50%      { border-bottom-color: rgba(255,30,30,0.6); }
+                }
+            </style>
+            <span style="font-size:16px;">🚀</span>
+            <span><b style="color:#ff4444;">Закрытое бета-тестирование</b> — сервер <b style="color:#fff;">${ZBT_SERVER}</b>. Данные будут сброшены после ЗБТ.</span>
+            <button onclick="document.getElementById('zbtBanner').style.display='none'"
+                style="margin-left:auto;background:none;border:none;color:#666;cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;">✕</button>
+        `;
+        document.body.prepend(banner);
+        // Сдвигаем контент вниз чтобы баннер не перекрывал
+        document.body.style.paddingTop = '34px';
+    }
 
     // ── Инициализация шторки профиля ──
     initSidebarHeader();
@@ -2326,7 +2316,6 @@ async function updateFirebaseUser(updatedUser) {
 // Глобальные функции
 window.openProfileEdit = openProfileEdit;
 window.closeProfileEdit = closeProfileEdit;
-window.closeProfileMenu = closeProfileMenu;
 window.saveProfileChanges = saveProfileChanges;
 window.editAd = editAd;
 window.closeEditModal = closeEditModal;
@@ -2348,8 +2337,8 @@ window.openReportModal = async function(adId) {
         <div class="report-modal-content">
             <button class="modal-close" onclick="closeReportModal()">&times;</button>
             <h2>🚩 Пожаловаться на объявление</h2>
-            <p class="report-item-title">${escapeHtml(ad.title)}</p>
-            <p class="report-item-author">Продавец: ${escapeHtml(ad.author)}</p>
+            <p class="report-ad-title">${escapeHtml(ad.title)}</p>
+            <p class="report-ad-author">Продавец: ${escapeHtml(ad.author)}</p>
             
             <div class="report-reasons">
                 <label class="report-reason">

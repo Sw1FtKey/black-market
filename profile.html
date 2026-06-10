@@ -638,7 +638,7 @@ function renderAchievementsTab() {
         if (!groupBadges.length) continue;
 
         html += `<div style="margin-bottom:20px;">
-            <div style="font-size:13px;color:#555;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">${group.label}</div>
+            <div style="font-size:13px;color:#777;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">${group.label}</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
 
         for (const key of groupBadges) {
@@ -657,7 +657,7 @@ function renderAchievementsTab() {
                 ">
                     <div style="font-size:26px;margin-bottom:6px;">${cfg.icon}</div>
                     <div style="color:${cfg.color};font-size:14px;font-weight:600;margin-bottom:4px;">${cfg.label}</div>
-                    <div style="color:#555;font-size:12px;line-height:1.4;">${cfg.desc}</div>
+                    <div style="color:#999;font-size:12px;line-height:1.4;">${cfg.desc}</div>
                     <div style="margin-top:8px;">
                         <span style="font-size:11px;color:${rarity.color};background:${rarity.color}18;border:1px solid ${rarity.color}40;border-radius:20px;padding:2px 8px;">${rarity.label}</span>
                     </div>
