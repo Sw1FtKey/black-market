@@ -4909,3 +4909,17 @@ input, textarea, select {
         top: auto !important;
     }
 }
+
+/* ── Lucide иконки в меню ── */
+.menu-icon svg {
+    stroke: #888;
+    transition: stroke 0.2s;
+    display: block;
+}
+.profile-menu-item:hover .menu-icon svg,
+.profile-menu-item.active .menu-icon svg {
+    stroke: #ff1e1e;
+}
+.logout-btn .menu-icon svg {
+    stroke: #ff6b6b;
+}
