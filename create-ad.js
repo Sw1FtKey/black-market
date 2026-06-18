@@ -9,7 +9,7 @@ import { db, auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showToast } from './utils.js';
-import { getAllAds, saveAd } from './api.js';
+import { getAllAds, saveAd, checkBanStatus } from './api.js';
 
 // Ждём восстановления Firebase Auth сессии перед тем как давать публиковать
 let _authReady = false;
@@ -349,6 +349,18 @@ form.addEventListener('submit', async (e) => {
             showToast('Ошибка авторизации. Перезайди на страницу.', 'error');
             return;
         }
+    }
+
+    // Проверка бана
+    const banStatus = await checkBanStatus(currentUser.nickname);
+    if (banStatus.banned) {
+        if (banStatus.level === 'ban_perm') {
+            showToast('Вы заблокированы навсегда. Создание объявлений недоступно.', 'error');
+        } else {
+            const hours = Math.ceil(banStatus.remaining / (1000 * 60 * 60));
+            showToast(`Вы заблокированы на ${hours} ч. Создание объявлений недоступно.`, 'error');
+        }
+        return;
     }
 
     // Проверка cooldown / антиспам

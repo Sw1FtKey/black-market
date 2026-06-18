@@ -3,7 +3,7 @@ import { db } from './firebase-config.js';
 import { 
     doc, getDoc, setDoc, updateDoc, onSnapshot,
     collection, query, orderBy, addDoc, writeBatch, where, getDocs,
-    limit, limitToLast, startAfter, endBefore, getCountFromServer
+    limitToLast, endBefore
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const currentUser = JSON.parse(localStorage.getItem('currentUser'));

@@ -830,7 +830,7 @@ async function loadPlatformStats() {
     const todayLogs = logs.filter(l => l.timestamp?.startsWith(new Date().toISOString().split('T')[0]));
     const categories = {};
     ads.forEach(ad => { categories[ad.category] = (categories[ad.category] || 0) + 1; });
-    const catNames = { cars:'Машины', houses:'Дома', garages:'Гаражи', business:'Бизнесы', accessories:'Аксессуары', skins:'Скины', other:'Разное' };
+    const catNames = { cars:'Транспорт', houses:'Дома', garages:'Гаражи', business:'Бизнесы', accessories:'Аксессуары', skins:'Скины', other:'Разное' };
 
     panel.innerHTML = `
     <h3 style="color:white;margin:0 0 20px;">📊 Статистика платформы</h3>

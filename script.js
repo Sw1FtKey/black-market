@@ -1048,7 +1048,7 @@ function createAdCard(ad) {
     };
     
     const categoryNames = {
-        cars: 'Машина', houses: 'Дом', garages: 'Гараж',
+        cars: 'Транспорт', houses: 'Дом', garages: 'Гараж',
         business: 'Бизнес', accessories: 'Аксессуар', skins: 'Скин', other: 'Разное'
     };
     
@@ -1095,7 +1095,7 @@ function createMyAdCard(ad) {
     };
     
     const categoryNames = {
-        cars: 'Машина', houses: 'Дом', garages: 'Гараж',
+        cars: 'Транспорт', houses: 'Дом', garages: 'Гараж',
         business: 'Бизнес', accessories: 'Аксессуар', skins: 'Скин', other: 'Разное'
     };
     
@@ -1363,7 +1363,7 @@ function createModalContent(ad) {
     const date = new Date(ad.createdAt).toLocaleString('ru-RU');
     
     const categoryNames = {
-        cars: 'Машина', houses: 'Дом', garages: 'Гараж',
+        cars: 'Транспорт', houses: 'Дом', garages: 'Гараж',
         business: 'Бизнес', accessories: 'Аксессуар', skins: 'Скин', other: 'Разное'
     };
     
@@ -1457,8 +1457,7 @@ function createModalContent(ad) {
         ${detailsHtml}
         ${chatButtonHtml}
         <div class="modal-footer">
-            <span>Продавец: <a href="profile.html?user=${encodeURIComponent(ad.author)}" onclick="event.stopPropagation()" style="color:#ff6b6b;text-decoration:none;font-weight:600;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escapeHtml(ad.author)}</a></span>
-            <span>${date}</span>
+            <span style="color:#555;">${date}</span>
         </div>
     `;
 }
@@ -1532,16 +1531,21 @@ window.selectStar = function(value, name) {
 
 async function renderSellerBlock(ad) {
     const isOwn = ad.author === currentUser?.nickname;
-    const reviews = await getReviews(ad.author);
+
+    // Грузим отзывы и пользователей параллельно
+    const [reviews, allUsers] = await Promise.all([
+        getReviews(ad.author).catch(() => []),
+        getUsers().catch(() => [])
+    ]);
+
     const rating = calcRating(reviews);
     const ratingHtml = rating
         ? `<span style="color:#ffd700;">${renderStars(rating)}</span> <span style="color:white;font-weight:600;">${rating}</span> <span style="color:#888;font-size:13px;">(${reviews.length})</span>`
         : `<span style="color:#555;font-size:13px;">Нет отзывов</span>`;
 
-    // Подгружаем бейджи продавца
+    // Бейджи продавца
     let sellerBadgesHtml = '';
     try {
-        const allUsers = await getUsers();
         const seller = allUsers.find(u => u.nickname === ad.author);
         if (seller?.badges?.length) {
             sellerBadgesHtml = `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;">${renderUserBadges(seller.badges, 'sm')}</div>`;
@@ -1579,7 +1583,7 @@ async function renderSellerBlock(ad) {
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;margin-bottom:15px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                 <div>
-                    <div style="color:white;font-weight:600;margin-bottom:4px;">👤 ${escapeHtml(ad.author)}</div>
+                    <div style="font-weight:600;margin-bottom:4px;"><a href="profile.html?user=${encodeURIComponent(ad.author)}" style="color:white;text-decoration:none;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='white'">👤 ${escapeHtml(ad.author)}</a></div>
                     <div style="display:flex;align-items:center;gap:6px;">${ratingHtml}</div>
                     ${sellerBadgesHtml}
                 </div>
@@ -2003,6 +2007,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateFavCount();
     updateMyAdsCount();
     cleanupFavorites();
+
+    // Открываем объявление если пришли с profile.html (через sessionStorage)
+    const _ssAdId = sessionStorage.getItem('openAdId');
+    if (_ssAdId) {
+        sessionStorage.removeItem('openAdId');
+        window.history.replaceState({}, document.title, 'index.html');
+        setTimeout(async () => {
+            const ads2 = await getAllAds();
+            const ad2 = ads2.find(a => String(a.id) === _ssAdId || a._docId === _ssAdId);
+            if (ad2) openModal(ad2);
+        }, 600);
+    }
 
     // Открываем объявление если пришли с profile.html (?openAd=123)
     const _openAdId = new URLSearchParams(window.location.search).get('openAd');

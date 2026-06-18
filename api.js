@@ -137,6 +137,11 @@ export async function getBannedUsers() {
     }, 60000);
 }
 
+export async function saveBannedUsers(data) {
+    await setDoc(doc(db, 'data', 'bannedUsers'), { items: data });
+    invalidateCache('bannedUsers');
+}
+
 export async function checkBanStatus(nickname) {
     try {
         const bannedUsers = await getBannedUsers();
