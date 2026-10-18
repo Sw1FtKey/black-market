@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор сервера — Black Market</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/auth.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body class="servers-body">
 
@@ -23,12 +25,12 @@
 <!-- ПОИСК СЕРВЕРОВ -->
 <div class="server-search-container" id="serverSearchContainer" style="max-width: 500px; margin: 0 auto 30px; display: none;">
     <div class="server-search-wrapper" style="position: relative;">
-        <span class="search-icon" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888;">🔍</span>
+        <span class="search-icon" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888;"><i data-lucide="search" width="16" height="16"></i></span>
         <input type="text" id="serverSearchInput" placeholder="Поиск сервера..." 
                style="width: 100%; padding: 14px 20px 14px 45px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); 
                       background: rgba(34,34,34,0.8); color: white; font-size: 16px;">
         <button id="clearSearchBtn" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); 
-                background: none; border: none; color: #888; cursor: pointer; font-size: 18px; display: none;">✕</button>
+                background: none; border: none; color: #888; cursor: pointer; font-size: 18px; display: none;"><i data-lucide="x" width="16" height="16"></i></button>
     </div>
     <p class="search-results-count" id="searchResultsCount" style="color: #888; font-size: 13px; margin-top: 10px; text-align: center;"></p>
 </div>
@@ -44,7 +46,8 @@
 
 <!-- Сетка всех серверов -->
 <div class="servers-grid" id="serversGrid"></div>
-<script type="module" src="error-logger.js"></script>
-<script type="module" src="servers.js"></script>
+<script type="module" src="js/error-logger.js"></script>
+<script type="module" src="js/servers.js"></script>
+<script>document.addEventListener("DOMContentLoaded", () => { if (window.lucide) lucide.createIcons(); });</script>
 </body>
 </html>

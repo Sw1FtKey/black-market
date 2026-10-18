@@ -58,14 +58,15 @@
         .empty { text-align: center; padding: 60px; color: #444; }
         .loading { text-align: center; padding: 60px; color: #666; }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 
 <div class="header">
     <a href="index.html" class="back">← Назад</a>
-    <h1>📊 Логи ошибок</h1>
+    <h1 style="display:flex; align-items:center; gap:8px;"><i data-lucide="bar-chart-3" width="22" height="22"></i> Логи ошибок</h1>
     <span id="lastUpdated" style="color:#555;font-size:13px;margin-left:auto;"></span>
-    <button class="btn-clear" onclick="clearLogs()">🗑 Очистить</button>
+    <button class="btn-clear" onclick="clearLogs()" style="display:inline-flex;align-items:center;gap:6px;"><i data-lucide="trash-2" width="14" height="14"></i> Очистить</button>
 </div>
 
 <!-- Статистика -->
@@ -99,20 +100,20 @@
 <!-- Фильтры -->
 <div class="filters">
     <button class="filter-btn active" data-level="all" onclick="setFilter('all', this)">Все</button>
-    <button class="filter-btn active error" data-level="error" onclick="setFilter('error', this)">❌ Ошибки</button>
-    <button class="filter-btn warn" data-level="warn" onclick="setFilter('warn', this)">⚠️ Предупреждения</button>
-    <button class="filter-btn info" data-level="info" onclick="setFilter('info', this)">ℹ️ События</button>
+    <button class="filter-btn active error" data-level="error" onclick="setFilter('error', this)" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="x-circle" width="13" height="13"></i> Ошибки</button>
+    <button class="filter-btn warn" data-level="warn" onclick="setFilter('warn', this)" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="alert-triangle" width="13" height="13"></i> Предупреждения</button>
+    <button class="filter-btn info" data-level="info" onclick="setFilter('info', this)" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="info" width="13" height="13"></i> События</button>
     <input type="text" id="searchInput" placeholder="Поиск по тексту, странице, пользователю..." oninput="renderLogs()">
 </div>
 
 <!-- Логи -->
 <div class="logs" id="logsList">
-    <div class="loading">⏳ Загрузка логов...</div>
+    <div class="loading" style="display:flex;align-items:center;justify-content:center;gap:8px;"><i data-lucide="loader" width="18" height="18"></i> Загрузка логов...</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -131,22 +132,26 @@ const auth = getAuth(app);
 let allLogs = [];
 let activeFilter = 'all';
 
+if (window.lucide) lucide.createIcons();
+
 async function loadLogs() {
     try {
-        const snap = await getDoc(doc(db, 'errorLogs', 'logs'));
-        allLogs = snap.exists() ? snap.data().items || [] : [];
+        const entriesRef = collection(db, 'errorLogs', 'logs', 'entries');
+        const q = query(entriesRef, orderBy('timestamp', 'desc'), limit(500));
+        const snap = await getDocs(q);
+        allLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        const lastUpdated = snap.exists() ? snap.data().lastUpdated : null;
-        if (lastUpdated) {
+        if (allLogs.length > 0) {
             document.getElementById('lastUpdated').textContent =
-                'Обновлено: ' + new Date(lastUpdated).toLocaleString('ru-RU');
+                'Обновлено: ' + new Date(allLogs[0].timestamp).toLocaleString('ru-RU');
         }
 
         updateStats();
         renderLogs();
     } catch (e) {
         document.getElementById('logsList').innerHTML =
-            '<div class="empty">❌ Ошибка загрузки. Возможно нет прав доступа.</div>';
+            '<div class="empty" style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="x-circle" width="24" height="24"></i> Ошибка загрузки. Возможно нет прав доступа.</div>';
+        if (window.lucide) lucide.createIcons();
     }
 }
 
@@ -179,7 +184,8 @@ window.renderLogs = function() {
     const container = document.getElementById('logsList');
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="empty">📭 Логов не найдено</div>';
+        container.innerHTML = '<div class="empty" style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="inbox" width="28" height="28"></i> Логов не найдено</div>';
+        if (window.lucide) lucide.createIcons();
         return;
     }
 
@@ -206,6 +212,7 @@ window.renderLogs = function() {
             </div>
         </div>`;
     }).join('');
+    if (window.lucide) lucide.createIcons();
 };
 
 window.toggleDetails = function(i) {
@@ -223,7 +230,24 @@ window.setFilter = function(level, btn) {
 window.clearLogs = async function() {
     if (!confirm('Очистить все логи?')) return;
     try {
-        await setDoc(doc(db, 'errorLogs', 'logs'), { items: [], lastUpdated: new Date().toISOString() });
+        const entriesRef = collection(db, 'errorLogs', 'logs', 'entries');
+        // Берём вообще все документы (не только последние 500 отображённых) —
+        // очистка должна быть полной, лимита на запись больше нет.
+        const snap = await getDocs(entriesRef);
+
+        const BATCH_SIZE = 450; // с запасом от лимита Firestore в 500 операций на batch
+        let batch = writeBatch(db);
+        let count = 0;
+        for (const d of snap.docs) {
+            batch.delete(d.ref);
+            count++;
+            if (count % BATCH_SIZE === 0) {
+                await batch.commit();
+                batch = writeBatch(db);
+            }
+        }
+        if (count % BATCH_SIZE !== 0) await batch.commit();
+
         allLogs = [];
         updateStats();
         renderLogs();
@@ -237,12 +261,39 @@ function escapeHtml(text) {
     return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function getCurrentNickname() {
+    try {
+        const u = JSON.parse(localStorage.getItem('currentUser'));
+        return u?.nickname || null;
+    } catch { return null; }
+}
+
+async function isOwner(nickname) {
+    if (!nickname) return false;
+    try {
+        const snap = await getDoc(doc(db, 'data', 'roles'));
+        const roles = snap.exists() ? snap.data().items || {} : {};
+        const role = roles[nickname] || roles[nickname.toLowerCase()];
+        return role === 'owner';
+    } catch {
+        return false;
+    }
+}
+
 // Ждём Firebase Auth перед загрузкой — иначе permission-denied
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.href = 'register.html';
         return;
     }
+
+    const owner = await isOwner(getCurrentNickname());
+    if (!owner) {
+        alert('Эта страница доступна только владельцу');
+        window.location.href = 'index.html';
+        return;
+    }
+
     loadLogs();
     setInterval(loadLogs, 30000);
 });

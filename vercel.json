@@ -1,6 +1,10 @@
 {
   "routes": [
     {
+      "src": "^/$",
+      "dest": "/landing.html"
+    },
+    {
       "handle": "filesystem"
     },
     {

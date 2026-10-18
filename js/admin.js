@@ -1,0 +1,1616 @@
+// ===== ИМПОРТ FIREBASE =====
+import { db } from './firebase-config.js';
+import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { CATEGORY_SIDEBAR_NAMES } from './categories-data.js';
+import { BADGES_CONFIG } from './badges-data.js';
+
+// ===== ЗАЩИТА ОТ ДВОЙНОГО КЛИКА =====
+const processingActions = new Set();
+function isProcessing(key) {
+    if (processingActions.has(key)) return true;
+    processingActions.add(key);
+    setTimeout(() => processingActions.delete(key), 3000);
+    return false;
+}
+
+// ===== КАСТОМНОЕ ПОДТВЕРЖДЕНИЕ (взамен системного confirm()) =====
+function customConfirm(message, confirmLabel) {
+    if (!confirmLabel) confirmLabel = 'Удалить';
+    return new Promise((resolve) => {
+        document.getElementById('customConfirmOverlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'customConfirmOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:11000;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .2s ease;';
+        overlay.innerHTML = `
+            <div style="background:#151515;border:1px solid rgba(255,30,30,0.25);border-radius:18px;padding:26px;max-width:360px;width:100%;transform:scale(0.94);transition:transform .2s ease;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,30,30,0.12);color:#ff6b6b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i data-lucide="alert-triangle" width="19" height="19"></i>
+                    </div>
+                    <div style="font-size:15px;color:#eee;font-weight:600;line-height:1.4;">${message}</div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button id="customConfirmCancel" style="padding:9px 18px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#aaa;font-size:13px;font-weight:600;cursor:pointer;">Отмена</button>
+                    <button id="customConfirmOk" style="padding:9px 18px;background:linear-gradient(135deg,#ff1e1e,#cc0000);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">${confirmLabel}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        if (window.lucide) lucide.createIcons();
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            overlay.firstElementChild.style.transform = 'scale(1)';
+        });
+
+        function finish(result) {
+            document.removeEventListener('keydown', onKey);
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.remove(), 150);
+            resolve(result);
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') finish(false);
+            if (e.key === 'Enter') finish(true);
+        }
+
+        document.getElementById('customConfirmOk').addEventListener('click', () => finish(true));
+        document.getElementById('customConfirmCancel').addEventListener('click', () => finish(false));
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(false); });
+        document.addEventListener('keydown', onKey);
+    });
+}
+
+// ===== TOAST =====
+function showToast(message, type) {
+    if (!type) type = 'info';
+    document.querySelectorAll('.bm-toast-admin').forEach(t => t.remove());
+    const cfg = { success:{border:'#4caf50',icon:'✓'}, error:{border:'#f44336',icon:'✕'}, warning:{border:'#ff9800',icon:'!'}, info:{border:'#2196f3',icon:'i'} };
+    const c = cfg[type] || cfg.info;
+    const t = document.createElement('div');
+    t.className = 'bm-toast-admin';
+    t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(17,17,17,0.97);border:1px solid '+c.border+'40;border-left:3px solid '+c.border+';color:white;padding:14px 20px;border-radius:12px;z-index:99999;font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;min-width:240px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.6);transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s ease;opacity:0;pointer-events:none;';
+    t.innerHTML = '<span style="width:20px;height:20px;border-radius:50%;background:'+c.border+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;">'+c.icon+'</span><span>'+message+'</span>';
+    document.body.appendChild(t);
+    requestAnimationFrame(() => { t.style.transform='translateX(-50%) translateY(0)'; t.style.opacity='1'; });
+    setTimeout(() => { t.style.transform='translateX(-50%) translateY(80px)'; t.style.opacity='0'; setTimeout(() => t.remove(), 350); }, (type==='error'||type==='warning') ? 3500 : 2500);
+}
+
+// ===== СИСТЕМА РОЛЕЙ =====
+// owner   — владелец: всё + управление ролями
+// admin   — админ: баны, логи, жалобы, удаление
+// moder   — модератор: жалобы, удаление объявлений, предупреждения
+const ROLE_CONFIG = {
+    owner: { name: 'Владелец',   icon: '<i data-lucide="crown" width="14" height="14"></i>', color: '#f9ca24', level: 3 },
+    admin: { name: 'Администратор', icon: '<i data-lucide="shield" width="14" height="14"></i>', color: '#ff6b6b', level: 2 },
+    moder: { name: 'Модератор',  icon: '<i data-lucide="hammer" width="14" height="14"></i>', color: '#74b9ff', level: 1 },
+};
+
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+let myRole = null; // загрузим из Firebase
+
+// ===== ЗАЩИТА ДЕЙСТВИЙ =====
+// Проверяем роль перед каждым критичным действием
+// Это второй уровень защиты — первый в Firestore Rules
+function requireRole(action) {
+    if (!canDo(action)) {
+        showToast('Недостаточно прав для этого действия', 'error');
+        console.warn(`[Security] Попытка выполнить "${action}" без прав. Роль: ${myRole}`);
+        return false;
+    }
+    return true;
+}
+
+
+
+// ===== СЛОВАРЬ ПРИЧИН ЖАЛОБ =====
+const REPORT_REASONS = {
+    'spam':        '<i data-lucide="megaphone" width="12" height="12"></i> Спам',
+    'wrong_price': '<i data-lucide="dollar-sign" width="12" height="12"></i> Некорректная цена',
+    'scam':        '<i data-lucide="siren" width="12" height="12"></i> Мошенничество',
+    'sold':        '<i data-lucide="check-circle" width="12" height="12"></i> Уже продано',
+    'other':       '<i data-lucide="help-circle" width="12" height="12"></i> Другое',
+    'fake':        '<i data-lucide="drama" width="12" height="12"></i> Фейк',
+    'offensive':   '<i data-lucide="frown" width="12" height="12"></i> Оскорбления',
+    'insult':      '<i data-lucide="frown" width="12" height="12"></i> Оскорбления', // тот же смысл, что и offensive — используется кнопкой наказания "Оскорбления" (data-value="insult"), другой код по историческим причинам
+    'wrong_info':  '<i data-lucide="x-circle" width="12" height="12"></i> Неверная информация',
+    'duplicate':   '<i data-lucide="copy" width="12" height="12"></i> Дубликат',
+};
+function getReasonName(reason) {
+    return REPORT_REASONS[reason] || reason || 'Нарушение';
+}
+async function getRoles() {
+    try {
+        const snap = await getDoc(doc(db, 'data', 'roles'));
+        return snap.exists() ? snap.data().items || {} : {};
+    } catch(e) { return {}; }
+}
+
+async function saveRoles(roles) {
+    await setDoc(doc(db, 'data', 'roles'), { items: roles });
+}
+
+async function getMyRole() {
+    const roles = await getRoles();
+    return roles[currentUser?.nickname] || null;
+}
+
+// Проверки прав
+function canDo(action) {
+    if (!myRole) return false;
+    const lvl = ROLE_CONFIG[myRole]?.level || 0;
+    const required = { delete_ad: 1, warn: 1, resolve: 1, ban: 2, unban: 2, logs: 2, manage_roles: 3, pin_ad: 2, platform_stats: 3 };
+    return lvl >= (required[action] || 99);
+}
+
+function isOwner() {
+    return myRole === 'owner';
+}
+
+// ===== ДАННЫЕ =====
+async function getAllAds() {
+    try {
+        const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        const snap = await getDocs(collection(db, 'ads'));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) { return []; }
+}
+
+// ─────────────────────────────────────────────
+// ПОЛЬЗОВАТЕЛИ — теперь users/{nickname}, один документ на юзера,
+// а не общий массив в data/users (см. подробности в api.js/firestore.rules:
+// защита от порчи чужих профилей + лимит 1MB на документ).
+// ─────────────────────────────────────────────
+async function getUsers() {
+    try {
+        const snap = await getDocs(collection(db, 'users'));
+        return snap.docs.map(d => ({ ...d.data(), nickname: d.data().nickname || d.id }));
+    } catch(e) { return []; }
+}
+
+// Точечное обновление полей ОДНОГО пользователя — не трогает документы
+// остальных, в отличие от старого saveUsers(fullArray).
+async function updateUserFields(nickname, updates) {
+    await setDoc(doc(db, 'users', nickname), updates, { merge: true });
+}
+
+async function deleteAdById(adId) {
+    try {
+        const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        await deleteDoc(doc(db, 'ads', String(adId)));
+        return true;
+    } catch(e) { console.error('Ошибка удаления объявления:', e); return false; }
+}
+// ─────────────────────────────────────────────
+// ЖАЛОБЫ — reports/{id}, один документ на жалобу (см. api.js — тот же
+// разбор проблемы, что чинили для баг-репортов и объявлений).
+// Раньше это был общий документ data/reports массивом: любое действие
+// модератора (взять в работу/закрыть/удалить) перечитывало ВЕСЬ список
+// и переписывало его целиком — при двух одновременно работающих
+// модераторах одно из действий тихо терялось (last-write-wins).
+// ─────────────────────────────────────────────
+async function getReports() {
+    try {
+        const snap = await getDocs(collection(db, 'reports'));
+        return snap.docs.map(d => ({ ...d.data(), id: d.data().id ?? d.id, _docId: d.id }));
+    } catch(e) { return []; }
+}
+async function updateReportDoc(reportId, updates) {
+    await updateDoc(doc(db, 'reports', String(reportId)), updates);
+}
+async function deleteReportDoc(reportId) {
+    await deleteDoc(doc(db, 'reports', String(reportId)));
+}
+// Баг-репорты — своя коллекция bugReports/{id}, отдельно от жалоб на
+// объявления (data/reports). Раньше жили в одном документе с жалобами,
+// из-за чего баг-репорт с фото мог не сохраниться (лимит 1MB на весь
+// документ) и засорял вкладку «Жалобы» записями без объявления.
+async function getBugReportsDocs() {
+    try {
+        const snap = await getDocs(collection(db, 'bugReports'));
+        return snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
+    } catch(e) { return []; }
+}
+async function deleteBugReportDoc(reportId) {
+    await deleteDoc(doc(db, 'bugReports', String(reportId)));
+}
+async function updateBugReportDoc(reportId, updates) {
+    await updateDoc(doc(db, 'bugReports', String(reportId)), updates);
+}
+// ─────────────────────────────────────────────
+// ЖУРНАЛ ДЕЙСТВИЙ — коллекция adminLogs/{id}, одна запись = один документ.
+// ─────────────────────────────────────────────
+// Раньше журнал лежал одним документом data/logs массивом, а запись была
+// read-modify-write: прочитать весь массив, добавить строку, записать
+// обратно. Читать data/logs могут только admin+, а писать — и модератор.
+// У модератора чтение падало (permission-denied), catch возвращал [] —
+// и в Firestore записывался массив из ОДНОЙ новой строки поверх всей
+// истории: любое действие модератора стирало журнал целиком. Теперь
+// запись — это create нового документа, ничего читать не нужно, а
+// существующие записи правилами менять нельзя (журнал неизменяем).
+async function getAdminLogs() {
+    try {
+        const q = query(collection(db, 'adminLogs'), orderBy('timestamp', 'desc'), limit(2000));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => d.data());
+    } catch(e) { return []; }
+}
+async function saveAdminLog(action) {
+    try {
+        const id = Date.now();
+        const entry = { id, admin: currentUser?.nickname || '?', role: myRole || null, action: action.type, target: action.target ?? '', details: action.details || '', timestamp: new Date().toISOString() };
+        // суффикс — чтобы два действия в одну миллисекунду не затёрли друг друга
+        await setDoc(doc(db, 'adminLogs', `${id}_${Math.random().toString(36).slice(2, 7)}`), entry);
+    } catch(e) { console.warn('Не удалось записать в журнал:', e?.code || e?.message); }
+}
+async function getBannedUsers() {
+    try {
+        const snap = await getDoc(doc(db, 'data', 'bannedUsers'));
+        return snap.exists() ? snap.data().items || {} : {};
+    } catch(e) { return {}; }
+}
+async function saveBannedUsers(data) {
+    await setDoc(doc(db, 'data', 'bannedUsers'), { items: data });
+}
+
+// ===== УРОВНИ НАКАЗАНИЙ =====
+// deleteAds — удалять ли все объявления пользователя при этом наказании.
+// Раньше объявления удалялись при ЛЮБОМ бане, включая самый мягкий
+// (1 час) — это несоразмерно: временная мера ("остынь и возвращайся")
+// не должна безвозвратно уничтожать контент. Удаление объявлений теперь
+// только у по-настоящему серьёзных/долгих наказаний (7+ дней, перм.).
+const BAN_LEVELS = {
+    warn:     { name: 'Предупреждение', color: '#ffc107', duration: 0,         deleteAds: false },
+    ban_1h:   { name: 'Бан 1 час',     color: '#ff9800', duration: 3600000,    deleteAds: false },
+    ban_24h:  { name: 'Бан 24 часа',   color: '#ff5722', duration: 86400000,   deleteAds: false },
+    ban_7d:   { name: 'Бан 7 дней',    color: '#f44336', duration: 604800000,  deleteAds: true },
+    ban_30d:  { name: 'Бан 30 дней',   color: '#e91e63', duration: 2592000000, deleteAds: true },
+    ban_perm: { name: 'Перм. бан',     color: '#9c27b0', duration: -1,         deleteAds: true }
+};
+
+// ===== СОСТОЯНИЕ =====
+let currentFilter = 'all';
+let currentTab = 'reports';
+let selectedReports = new Set();
+let allReportsData = [];
+
+// ===== ИНИЦИАЛИЗАЦИЯ =====
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!currentUser) { window.location.href = 'register.html'; return; }
+
+    myRole = await getMyRole();
+    if (!myRole) {
+        document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:white;background:#0b0b0b;gap:16px;">
+            <div style="color:#ff4444;"><i data-lucide="shield-off" width="56" height="56"></i></div>
+            <h2 style="color:#ff4444;">Доступ запрещён</h2>
+            <p style="color:#888;">У вас нет прав для доступа к админ-панели</p>
+            <a href="index.html" style="color:#ff1e1e;">← На главную</a>
+        </div>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    renderRoleBadge();
+    renderTabsForRole();
+    await loadReports();
+    updateStats();
+});
+
+function renderRoleBadge() {
+    const cfg = ROLE_CONFIG[myRole];
+    const badge = document.getElementById('roleBadge');
+    if (badge) badge.innerHTML = `<span style="background:${cfg.color}22;border:1px solid ${cfg.color}55;color:${cfg.color};padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px;">${cfg.icon} ${cfg.name}</span>`;
+    if (window.lucide) lucide.createIcons();
+}
+
+function renderTabsForRole() {
+    const tabs = document.getElementById('adminTabs');
+    if (!tabs) return;
+    let html = `<button class="tab-btn active" data-tab="reports" onclick="switchTab('reports')" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="clipboard-list" width="14" height="14"></i> Жалобы</button>`;
+    if (canDo('ban')) html += `<button class="tab-btn" data-tab="bans" onclick="switchTab('bans')" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="ban" width="14" height="14"></i> Баны</button>`;
+    if (canDo('logs')) html += `<button class="tab-btn" data-tab="logs" onclick="switchTab('logs')" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="scroll-text" width="14" height="14"></i> Журнал</button>`;
+    if (canDo('platform_stats')) html += `<button class="tab-btn" data-tab="platform" onclick="switchTab('platform')" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="bar-chart-3" width="14" height="14"></i> Платформа</button>`;
+    if (isOwner()) html += `<button class="tab-btn" data-tab="users" onclick="switchTab('users')" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="users" width="14" height="14"></i> Пользователи</button>`;
+    if (canDo('logs')) html += `<button class="tab-btn" data-tab="bugreports" onclick="switchTab('bugreports')" style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="bug" width="14" height="14"></i> Баг-репорты</button>`;
+    tabs.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+}
+
+// ===== СТАТИСТИКА =====
+async function updateStats() {
+    const reports = (await getReports()).filter(r => !r.type && r.adId != null);
+    const newCount = reports.filter(r => r.status === 'new').length;
+    const totalCount = reports.length;
+    const resolvedCount = reports.filter(r => r.status === 'resolved').length;
+    const el = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+    el('newReportsCount', newCount);
+    el('totalReportsCount', totalCount);
+    el('resolvedCount', resolvedCount);
+}
+
+// ===== ТАБЫ =====
+window.switchTab = async function(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('reportsList').classList.add('hidden');
+    document.getElementById('logsList')?.classList.add('hidden');
+    document.getElementById('bansPanel')?.classList.add('hidden');
+    document.getElementById('platformPanel')?.classList.add('hidden');
+    document.getElementById('rolesPanel')?.classList.add('hidden');
+    document.getElementById('badgesPanel')?.classList.add('hidden');
+    document.getElementById('usersPanel')?.classList.add('hidden');
+    document.getElementById('bugReportsPanel')?.classList.add('hidden');
+    document.getElementById('massActionsPanel')?.classList.add('hidden');
+
+    if (tab === 'reports') { document.getElementById('reportsList').classList.remove('hidden'); await loadReports(); }
+    else if (tab === 'logs') { document.getElementById('logsList')?.classList.remove('hidden'); await loadLogs(); }
+    else if (tab === 'bans') { document.getElementById('bansPanel')?.classList.remove('hidden'); await loadBans(); }
+    else if (tab === 'platform') { document.getElementById('platformPanel')?.classList.remove('hidden'); await loadPlatformStats(); }
+    else if (tab === 'users') { document.getElementById('usersPanel')?.classList.remove('hidden'); await loadUsersPanel(); }
+    else if (tab === 'bugreports') { document.getElementById('bugReportsPanel')?.classList.remove('hidden'); await loadBugReports(); }
+};
+
+// ===== ЖАЛОБЫ =====
+async function loadReports() {
+    const reports = await getReports();
+    // Защита от «старых» записей: до фикса баг-репорты какое-то время
+    // могли писаться в этот же data/reports вместе с жалобами на
+    // объявления. У жалобы всегда есть adId, у баг-репорта — type.
+    // Отфильтровываем на всякий случай, чтобы не показывать
+    // «Объявление #undefined» в списке жалоб.
+    allReportsData = reports.filter(r => !r.type && r.adId != null);
+    renderReports();
+}
+
+function renderReports() {
+    const list = document.getElementById('reportsList');
+    if (!list) return;
+    let filtered = [...allReportsData];
+    if (currentFilter !== 'all') filtered = filtered.filter(r => r.status === currentFilter);
+
+    // Сортировка: новые → в работе → решённые, внутри каждого статуса — новые сверху
+    const statusOrder = { new: 0, viewed: 1, resolved: 2 };
+    filtered.sort((a, b) => {
+        const so = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+        if (so !== 0) return so;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    if (filtered.length === 0) { list.innerHTML = `<div class="empty-state"><p>Нет жалоб</p></div>`; return; }
+
+    list.innerHTML = filtered.map(r => {
+        const statusColors = { new: '#ff4444', viewed: '#ff9800', resolved: '#4caf50' };
+        const statusNames  = { new: '<span style="color:#ff4444;">●</span> Новая', viewed: '<span style="color:#ff9800;">●</span> В работе', resolved: '<span style="color:#4caf50;">●</span> Решена' };
+        const checked = selectedReports.has(r.id);
+        const sc = statusColors[r.status] || '#888';
+        const authorInitial = (r.adAuthor || r.author || '?').charAt(0).toUpperCase();
+        const reporterInitial = (r.reportedBy || r.reporter || '?').charAt(0).toUpperCase();
+        const isNew = r.status === 'new';
+        const isViewed = r.status === 'viewed';
+
+        return `
+        <div style="background:rgba(17,17,17,0.9);border:1px solid ${isNew ? '#ff444430' : isViewed ? '#ff980030' : 'rgba(255,255,255,0.07)'};border-radius:14px;margin-bottom:12px;overflow:hidden;${isNew ? 'box-shadow:0 0 0 1px #ff444420;' : ''}">
+            
+            <!-- Шапка карточки -->
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05);">
+                <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleReportSelect(${r.id}, this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#ff1e1e;flex-shrink:0;">
+                <span style="background:${sc}18;color:${sc};border:1px solid ${sc}35;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;">${statusNames[r.status] || r.status}</span>
+                <span style="background:rgba(255,255,255,0.06);color:#bbb;padding:3px 10px;border-radius:20px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">${getReasonName(r.reason)}</span>
+                <span style="color:#444;font-size:12px;margin-left:auto;">${formatDate(r.createdAt)}</span>
+            </div>
+
+            <!-- Тело карточки -->
+            <div style="padding:14px 16px;">
+                
+                <!-- Объявление -->
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                    <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,30,30,0.1);border:1px solid rgba(255,30,30,0.2);display:flex;align-items:center;justify-content:center;color:#ff6b6b;flex-shrink:0;"><i data-lucide="file-text" width="16" height="16"></i></div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="color:white;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.adTitle || 'Объявление #' + r.adId)}</div>
+                        <div style="color:#666;font-size:12px;margin-top:2px;">ID: ${r.adId}</div>
+                    </div>
+                </div>
+
+                <!-- Продавец и жалобщик -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:${r.comment ? '12px' : '14px'};">
+                    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:10px;display:flex;align-items:center;gap:8px;">
+                        <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#ff6b6b;flex-shrink:0;">${authorInitial}</div>
+                        <div>
+                            <div style="color:#888;font-size:11px;">Продавец</div>
+                            <div style="color:white;font-size:13px;font-weight:600;">${escapeHtml(r.adAuthor || r.author || '—')}</div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:10px;display:flex;align-items:center;gap:8px;">
+                        <div style="width:30px;height:30px;border-radius:50%;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#64b5f6;flex-shrink:0;">${reporterInitial}</div>
+                        <div>
+                            <div style="color:#888;font-size:11px;">Жалоба от</div>
+                            <div style="color:white;font-size:13px;font-weight:600;">${escapeHtml(r.reportedBy || r.reporter || '—')}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Комментарий -->
+                ${r.comment ? `<div style="color:#aaa;font-style:italic;font-size:13px;padding:10px 14px;background:rgba(255,255,255,0.03);border-left:3px solid rgba(255,255,255,0.1);border-radius:0 8px 8px 0;margin-bottom:14px;">"${escapeHtml(r.comment)}"</div>` : ''}
+
+                <!-- Кнопки — зависят от статуса -->
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <button onclick="viewReportAd('${r.adId}')" style="padding:8px 16px;background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.3);color:#64b5f6;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="eye" width="14" height="14"></i> Посмотреть</button>
+
+                    ${r.status === 'new' ? `
+                        <button onclick="takeInWork(${r.id})" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="zap" width="14" height="14"></i> Взять в работу</button>
+                        <button onclick="dismissReport(${r.id})" style="padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="x" width="14" height="14"></i> Отклонить</button>
+                    ` : ''}
+
+                    ${r.status === 'viewed' ? `
+                        ${canDo('delete_ad') ? `<button onclick="deleteAdFromReport('${r.adId}', ${r.id})" style="padding:8px 16px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);color:#ef5350;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="trash-2" width="14" height="14"></i> Удалить объявление</button>` : ''}
+                        ${canDo('ban') ? `<button onclick="openPunishModal('${escapeHtml(r.adAuthor || r.author || '')}', ${r.id})" style="padding:8px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);color:#ffa726;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="hammer" width="14" height="14"></i> Наказать</button>` : ''}
+                        <button onclick="resolveReport(${r.id})" style="padding:8px 16px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);color:#66bb6a;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="check" width="14" height="14"></i> Решить</button>
+                    ` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+// Фильтры
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderReports();
+    });
+});
+
+window.toggleReportSelect = function(id, checked) {
+    if (checked) selectedReports.add(id); else selectedReports.delete(id);
+    updateMassActionsUI();
+};
+
+function updateMassActionsUI() {
+    const panel = document.getElementById('massActionsPanel');
+    if (!panel) return;
+    if (selectedReports.size > 0) {
+        panel.classList.remove('hidden');
+        const el = document.getElementById('selectedCount');
+        if (el) el.textContent = selectedReports.size;
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
+window.takeInWork = async function(reportId) {
+    await updateReportDoc(reportId, { status: 'viewed' });
+    await saveAdminLog({ type: 'view_report', target: reportId, details: 'Взята в работу' });
+    const reports = await getReports();
+    allReportsData = reports;
+    renderReports();
+    updateStats();
+};
+
+window.massTakeInWork = async function() {
+    const reports = await getReports();
+    const affected = reports.filter(r => selectedReports.has(r.id) && r.status === 'new');
+    await Promise.all(affected.map(r => updateReportDoc(r.id, { status: 'viewed' })));
+    if (affected.length > 0) {
+        await saveAdminLog({ type: 'view_report', target: affected.map(r => r.id).join(', '), details: `Массово взято в работу: ${affected.length} жалоб` });
+    }
+    selectedReports.clear();
+    updateMassActionsUI();
+    allReportsData = await getReports();
+    renderReports();
+    showToast('Жалобы взяты в работу', 'success');
+};
+
+window.massResolve = async function() {
+    const reports = await getReports();
+    const affected = reports.filter(r => selectedReports.has(r.id));
+    await Promise.all(affected.map(r => updateReportDoc(r.id, { status: 'resolved' })));
+    if (affected.length > 0) {
+        await saveAdminLog({ type: 'resolve_report', target: affected.map(r => r.id).join(', '), details: `Массово закрыто: ${affected.length} жалоб` });
+    }
+    selectedReports.clear();
+    updateMassActionsUI();
+    await loadReports();
+    showToast('Жалобы отмечены решёнными', 'success');
+};
+
+window.deleteReport = async function(reportId) {
+    if (!(await customConfirm('Удалить жалобу навсегда?'))) return;
+    await deleteReportDoc(reportId);
+    await saveAdminLog({ type: 'delete_report', target: reportId, details: 'Жалоба удалена' });
+    allReportsData = await getReports();
+    renderReports();
+    updateStats();
+    showToast('Жалоба удалена', 'success');
+};
+
+window.dismissReport = async function(reportId) {
+    await updateReportDoc(reportId, { status: 'resolved' });
+    await saveAdminLog({ type: 'dismiss_report', target: reportId, details: 'Жалоба отклонена' });
+    allReportsData = await getReports();
+    renderReports();
+    updateStats();
+    showToast('Жалоба отклонена', 'info');
+};
+
+window.resolveReport = async function(reportId) {
+    await updateReportDoc(reportId, { status: 'resolved' });
+    await saveAdminLog({ type: 'resolve_report', target: reportId, details: 'Жалоба закрыта' });
+    await loadReports();
+    showToast('Жалоба закрыта', 'success');
+};
+
+window.deleteAdFromReport = async function(adId, reportId) {
+    if (!requireRole('delete_ad')) return;
+    if (!(await customConfirm('Удалить объявление и выдать предупреждение продавцу?'))) return;
+
+    const ads = await getAllAds();
+    const ad = ads.find(a => String(a.id) === String(adId));
+    const author = ad?.author;
+
+    // Удаляем объявление из коллекции ads/{adId}
+    const deleted = await deleteAdById(adId);
+    if (!deleted) { showToast('Ошибка удаления объявления', 'error'); return; }
+
+    // Автоматически выдаём предупреждение продавцу
+    if (author) {
+        const violation = { type: 'warn', reason: 'violation', note: 'Объявление удалено модератором', admin: currentUser?.nickname || 'admin' };
+        await saveUserViolation(author, violation);
+        await saveAdminLog({ type: 'warn_user', target: author, details: `Автопредупреждение при удалении объявления "${ad?.title}"` });
+        showToast(`Предупреждение выдано: ${author}`, 'info');
+    }
+
+    // Закрываем жалобу автоматически
+    const reports = await getReports();
+    const toClose = reports.filter(r => r.adId == adId || r.id === reportId);
+    await Promise.all(toClose.map(r => updateReportDoc(r.id, { status: 'resolved' })));
+
+    await saveAdminLog({ type: 'delete_ad', target: adId, details: `Удалено "${ad?.title}" по жалобе #${reportId}` });
+    await loadReports();
+    showToast('Объявление удалено, предупреждение выдано', 'success');
+};
+
+window.viewReportAd = async function(adId) {
+    try {
+        // Сначала пробуем прочитать напрямую из Firestore по ID
+        const adSnap = await getDoc(doc(db, 'ads', String(adId)));
+        if (adSnap.exists()) {
+            openAdModal({ id: adSnap.id, ...adSnap.data() });
+            return;
+        }
+        // Fallback — ищем в списке всех объявлений
+        const ads = await getAllAds();
+        const ad = ads.find(a => String(a.id) === String(adId));
+        if (!ad) { showToast('Объявление не найдено (возможно уже удалено)', 'warning'); return; }
+        openAdModal(ad);
+    } catch(e) {
+        console.error('Ошибка просмотра объявления:', e);
+        showToast('Ошибка загрузки объявления', 'error');
+    }
+};
+
+// ===== МОДАЛКА ПРОСМОТРА ОБЪЯВЛЕНИЯ =====
+function openAdModal(ad) {
+    const existing = document.getElementById('adminAdModal');
+    if (existing) existing.remove();
+    const priceFormatted = ad.price ? ad.price.toLocaleString('ru-RU') + ' ₽' : '—';
+    const date = ad.createdAt ? new Date(ad.createdAt).toLocaleString('ru-RU') : '—';
+    const photos = ad.photos?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">${ad.photos.map(p => `<img src="${p}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'adminAdModal';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+    <div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="color:white;margin:0;">${escapeHtml(ad.title)}</h3>
+            <button onclick="document.getElementById('adminAdModal').remove()" style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;">×</button>
+        </div>
+        <p style="color:#ff1e1e;font-size:22px;font-weight:700;margin:0 0 12px;">${priceFormatted}</p>
+        ${photos}
+        ${ad.description ? `<p style="color:#ccc;margin-bottom:16px;">${escapeHtml(ad.description)}</p>` : ''}
+        ${renderAdDetails(ad)}
+        <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;margin-top:12px;display:flex;justify-content:space-between;font-size:13px;color:#666;">
+            <span>Продавец: <b style="color:#aaa;">${escapeHtml(ad.author)}</b></span>
+            <span>${date}</span>
+        </div>
+        ${canDo('delete_ad') ? `<button onclick="deleteAdDirect(${ad.id})" style="margin-top:12px;width:100%;padding:10px;background:#f4433620;border:1px solid #f4433640;color:#f44336;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i data-lucide="trash-2" width="14" height="14"></i> Удалить объявление</button>` : ''}
+        ${canDo('ban') ? `<button onclick="openPunishModal('${ad.author}')" style="margin-top:8px;width:100%;padding:10px;background:#ff980020;border:1px solid #ff980040;color:#ff9800;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i data-lucide="hammer" width="14" height="14"></i> Наказать продавца</button>` : ''}
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    if (window.lucide) lucide.createIcons();
+}
+
+window.deleteAdDirect = async function(adId) {
+    if (!requireRole('delete_ad')) return;
+    if (!(await customConfirm('Удалить объявление?'))) return;
+    const deleted = await deleteAdById(adId);
+    if (!deleted) { showToast('Ошибка удаления', 'error'); return; }
+    await saveAdminLog({ type: 'delete_ad', target: adId, details: 'Прямое удаление из просмотра' });
+    document.getElementById('adminAdModal')?.remove();
+    showToast('Объявление удалено', 'success');
+};
+
+function renderAdDetails(ad) {
+    if (!ad || ad.category !== 'cars') return '';
+    const parts = [];
+    if (ad.firmware) parts.push(`<span style="background:rgba(255,30,30,0.1);border:1px solid rgba(255,30,30,0.2);color:#ff6b6b;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="settings" width="12" height="12"></i> ${ad.firmware}</span>`);
+    if (ad.lights?.underglow?.has) parts.push(`<span style="background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.2);color:#ffa726;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="lightbulb" width="12" height="12"></i> Подсветка</span>`);
+    if (ad.lights?.strobe?.has) parts.push(`<span style="background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.2);color:#ce93d8;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="zap" width="12" height="12"></i> Стробы</span>`);
+    if (ad.suspension?.length) ad.suspension.forEach(s => parts.push(`<span style="background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.2);color:#64b5f6;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="wrench" width="12" height="12"></i> ${s === 'pneumatic' ? 'Пневма' : 'Гидравлика'}</span>`));
+    if (!parts.length) return '';
+    return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">${parts.join('')}</div>`;
+}
+
+// ===== ИСТОРИЯ НАРУШЕНИЙ =====
+async function getUserViolations(nickname) {
+    try {
+        const snap = await getDoc(doc(db, 'data', 'violations'));
+        const v = snap.exists() ? snap.data().items || {} : {};
+        return v[nickname] || [];
+    } catch(e) { return []; }
+}
+
+async function saveUserViolation(nickname, violation) {
+    try {
+        const snap = await getDoc(doc(db, 'data', 'violations'));
+        const v = snap.exists() ? snap.data().items || {} : {};
+        if (!v[nickname]) v[nickname] = [];
+        v[nickname].push({ ...violation, date: new Date().toISOString(), id: Date.now() });
+        await setDoc(doc(db, 'data', 'violations'), { items: v });
+    } catch(e) { console.error('Ошибка сохранения нарушения:', e); }
+}
+
+async function determineBanLevel(nickname) {
+    const v = await getUserViolations(nickname);
+    const count = v.length;
+    if (count === 0) return 'warn';
+    if (count === 1) return 'ban_1h';
+    if (count === 2) return 'ban_24h';
+    if (count === 3) return 'ban_7d';
+    if (count === 4) return 'ban_30d';
+    return 'ban_perm';
+}
+
+// ===== МОДАЛКА НАКАЗАНИЯ (оригинальный стиль) =====
+window.openPunishModal = async function(nickname, reportId) {
+    if (!canDo('ban') && !canDo('warn')) return;
+    if (isProcessing('punish_' + nickname)) return;
+    const existing = document.getElementById('punishmentModal');
+    if (existing) existing.remove();
+
+    const violations = await getUserViolations(nickname);
+    const suggestedLevel = await determineBanLevel(nickname);
+
+    const modal = document.createElement('div');
+    modal.className = 'punishment-modal-overlay';
+    modal.id = 'punishmentModal';
+    modal.innerHTML = `
+        <div class="punishment-modal-content">
+            <button class="modal-close" onclick="closePunishmentModal()">&times;</button>
+            <h2 style="display:flex;align-items:center;gap:8px;"><i data-lucide="gavel" width="20" height="20"></i> Наказание для ${escapeHtml(nickname)}</h2>
+
+            <div class="violations-history">
+                <h4>История нарушений (${violations.length})</h4>
+                ${violations.length ? violations.map(v => `
+                    <div class="violation-item ${v.type}">
+                        <span class="violation-type">${BAN_LEVELS[v.type]?.name || v.type}</span>
+                        <span class="violation-date">${new Date(v.date).toLocaleDateString('ru-RU')}</span>
+                        <p>${getReasonName(v.reason)}${v.note ? ': ' + escapeHtml(v.note) : ''}</p>
+                    </div>
+                `).join('') : '<p class="no-violations">Нет нарушений</p>'}
+            </div>
+
+            <div class="suggested-punishment">
+                <p>Рекомендуемое наказание: <strong style="color:${BAN_LEVELS[suggestedLevel].color}">${BAN_LEVELS[suggestedLevel].name}</strong></p>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="display:block;color:#888;font-size:13px;margin-bottom:10px;">Причина наказания</label>
+                <div id="punishmentReasonBtns" style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <button type="button" data-value="spam"   onclick="selectPunishReason(this)" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,30,30,0.6);background:rgba(255,30,30,0.15);color:#ff6b6b;font-size:13px;cursor:pointer;">Спам / Реклама</button>
+                    <button type="button" data-value="scam"   onclick="selectPunishReason(this)" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#aaa;font-size:13px;cursor:pointer;">Мошенничество</button>
+                    <button type="button" data-value="insult" onclick="selectPunishReason(this)" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#aaa;font-size:13px;cursor:pointer;">Оскорбления</button>
+                    <button type="button" data-value="fake"   onclick="selectPunishReason(this)" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#aaa;font-size:13px;cursor:pointer;">Фейк</button>
+                    <button type="button" data-value="other"  onclick="selectPunishReason(this)" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#aaa;font-size:13px;cursor:pointer;">Другое</button>
+                </div>
+                <input type="hidden" id="punishmentReason" value="spam">
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block;color:#888;font-size:13px;margin-bottom:8px;">Комментарий (необязательно)</label>
+                <textarea id="punishmentNote" placeholder="Дополнительные комментарии..." style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:white;font-size:14px;outline:none;resize:vertical;min-height:72px;font-family:inherit;box-sizing:border-box;"></textarea>
+            </div>
+
+            <div class="punishment-actions">
+                ${Object.entries(BAN_LEVELS).map(([key, cfg]) => `
+                    <button class="punishment-btn"
+                        style="border-color:${cfg.color};color:${cfg.color};"
+                        data-nick="${escapeHtml(nickname)}"
+                        data-level="${key}"
+                        data-report="${reportId || ''}"
+                        onclick="executePunishment(this.dataset.nick, this.dataset.level, this.dataset.report)">
+                        ${cfg.name}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    if (window.lucide) lucide.createIcons();
+    requestAnimationFrame(() => modal.classList.add('active'));
+    modal.addEventListener('click', e => { if (e.target === modal) closePunishmentModal(); });
+};
+
+window.closePunishmentModal = function() {
+    const modal = document.getElementById('punishmentModal');
+    if (modal) { modal.classList.remove('active'); setTimeout(() => modal.remove(), 300); }
+};
+
+window.selectPunishReason = function(btn) {
+    document.querySelectorAll('#punishmentReasonBtns button').forEach(b => {
+        b.style.border = '1.5px solid rgba(255,255,255,0.1)';
+        b.style.background = 'rgba(255,255,255,0.05)';
+        b.style.color = '#aaa';
+    });
+    btn.style.border = '1.5px solid rgba(255,30,30,0.6)';
+    btn.style.background = 'rgba(255,30,30,0.15)';
+    btn.style.color = '#ff6b6b';
+    document.getElementById('punishmentReason').value = btn.dataset.value;
+};
+
+window.executePunishment = async function(nickname, level, reportId) {
+    if (!requireRole('ban')) return;
+    if (!nickname || !level) { showToast('Ошибка: не указан ник или уровень', 'error'); return; }
+    const cfg = BAN_LEVELS[level];
+    if (!cfg) { showToast('Неизвестный уровень наказания: ' + level, 'error'); return; }
+
+    const reason = document.getElementById('punishmentReason')?.value || 'other';
+    const note   = document.getElementById('punishmentNote')?.value?.trim() || '';
+
+    // Подтверждение перед реальным применением — раньше наказание
+    // прилетало сразу по клику на кнопку уровня, без единого шанса
+    // передумать/поймать случайный клик не по тому уровню.
+    const confirmMsg = cfg.deleteAds
+        ? `Применить «${cfg.name}» к ${nickname}? Также будут удалены все его объявления.`
+        : `Применить «${cfg.name}» к ${nickname}?`;
+    if (!(await customConfirm(confirmMsg, 'Применить'))) return;
+
+    // Блокируем кнопки чтобы не нажали дважды
+    document.querySelectorAll('.punishment-btn').forEach(b => b.disabled = true);
+
+    try {
+        const violation = { type: level, reason, note, admin: currentUser?.nickname || 'Unknown' };
+        await saveUserViolation(nickname, violation);
+
+        if (level !== 'warn') {
+            const snap = await getDoc(doc(db, 'data', 'bannedUsers'));
+            const bannedUsers = snap.exists() ? snap.data().items || {} : {};
+            bannedUsers[nickname] = {
+                until: cfg.duration === -1 ? 'permanent' : Date.now() + cfg.duration,
+                reason, note, admin: violation.admin,
+                date: new Date().toISOString(), level
+            };
+            await setDoc(doc(db, 'data', 'bannedUsers'), { items: bannedUsers });
+
+            if (cfg.deleteAds) {
+                const ads = await getAllAds();
+                const toDelete = ads.filter(a => a.author === nickname || a.author?.toLowerCase() === nickname.toLowerCase());
+                for (const ad of toDelete) {
+                    await deleteAdById(ad.id);
+                }
+                const deleted = toDelete.length;
+                if (deleted > 0) showToast(`Удалено ${deleted} объявлений от ${nickname}`, 'info');
+            }
+        }
+
+        // Автозакрытие жалобы после наказания
+        if (reportId) {
+            await updateReportDoc(reportId, { status: 'resolved' });
+        }
+
+        await saveAdminLog({
+            type: level === 'warn' ? 'warn_user' : 'ban_user',
+            target: nickname,
+            details: `${cfg.name}${note ? ': ' + note : ''} (Причина: ${reason})`
+        });
+
+        closePunishmentModal();
+
+        const toast = document.createElement('div');
+        toast.className = 'punishment-toast';
+        toast.innerHTML = `<strong>${cfg.name}</strong> применено к ${escapeHtml(nickname)}`;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
+        }, 100);
+
+        await loadReports();
+        updateStats();
+
+    } catch(e) {
+        console.error('Ошибка применения наказания:', e);
+        showToast('Ошибка: ' + e.message, 'error');
+        document.querySelectorAll('.punishment-btn').forEach(b => b.disabled = false);
+    }
+};
+
+// ===== БАНЫ =====
+async function loadBans() {
+    const panel = document.getElementById('bansPanel');
+    if (!panel) return;
+    const banned = await getBannedUsers();
+    const entries = Object.entries(banned);
+    if (!entries.length) { panel.innerHTML = `<div class="empty-state"><p>Нет заблокированных пользователей</p></div>`; return; }
+
+    panel.innerHTML = `
+    <div class="bans-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="color:white;margin:0;">Заблокированные пользователи (${entries.length})</h3>
+    </div>
+    <div class="bans-list">
+    ${entries.map(([nick, info]) => {
+        const isPerm = info.until === 'permanent';
+        const expired = !isPerm && Date.now() > info.until;
+        const remaining = isPerm ? '∞' : expired ? 'Истёк' : formatRemaining(info.until - Date.now());
+        const color = expired ? '#666' : isPerm ? '#9c27b0' : '#f44336';
+        return `
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="width:40px;height:40px;border-radius:50%;background:${color}22;border:2px solid ${color}44;display:flex;align-items:center;justify-content:center;font-weight:700;color:${color};flex-shrink:0;">${nick.charAt(0).toUpperCase()}</div>
+            <div style="flex:1;min-width:120px;">
+                <div style="color:white;font-weight:600;">${escapeHtml(nick)}</div>
+                <div style="color:#888;font-size:12px;margin-top:2px;">${info.reason ? getReasonName(info.reason) : '—'}</div>
+                <div style="color:#555;font-size:11px;">Заблокировал: ${escapeHtml(info.admin || '—')}</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="color:${color};font-weight:600;font-size:14px;">${remaining}</div>
+                <div style="color:#555;font-size:11px;">${info.date ? new Date(info.date).toLocaleDateString('ru-RU') : '—'}</div>
+            </div>
+            <button onclick="unbanUser('${nick}')" style="padding:8px 14px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);color:#4caf50;border-radius:8px;cursor:pointer;font-size:13px;">Разбанить</button>
+        </div>`;
+    }).join('')}
+    </div>`;
+    if (window.lucide) lucide.createIcons(); // иконка из getReasonName() иначе останется невидимым тегом
+}
+
+window.unbanUser = async function(nickname) {
+    if (!requireRole('unban')) return;
+    if (!(await customConfirm(`Разбанить ${nickname}?`, 'Разбанить'))) return;
+    const banned = await getBannedUsers();
+    delete banned[nickname];
+    await saveBannedUsers(banned);
+    await saveAdminLog({ type: 'unban_user', target: nickname, details: 'Ручной разбан' });
+    await loadBans();
+    showToast(`${nickname} разбанен`, 'success');
+};
+
+// ===== ЖУРНАЛ =====
+async function loadLogs() {
+    const panel = document.getElementById('logsList');
+    if (!panel) return;
+    const logs = await getAdminLogs();
+    const actionFilter = document.getElementById('logActionFilter')?.value || 'all';
+    const search = document.getElementById('logSearch')?.value.toLowerCase() || '';
+    let filtered = logs;
+    if (actionFilter !== 'all') filtered = filtered.filter(l => l.action === actionFilter);
+    if (search) filtered = filtered.filter(l => (l.admin+l.target+l.details).toLowerCase().includes(search));
+
+    const typeLabels = {
+        delete_ad:      '<i data-lucide="trash-2" width="12" height="12"></i> Удаление',
+        ban_user:       '<i data-lucide="hammer" width="12" height="12"></i> Бан',
+        warn_user:      '<i data-lucide="alert-triangle" width="12" height="12"></i> Предупреждение',
+        resolve_report: '<i data-lucide="check" width="12" height="12"></i> Жалоба закрыта',
+        dismiss_report: '<i data-lucide="x" width="12" height="12"></i> Жалоба отклонена',
+        delete_report:  '<i data-lucide="trash-2" width="12" height="12"></i> Жалоба удалена',
+        unban_user:     '<i data-lucide="check-circle" width="12" height="12"></i> Разбан',
+        view_report:    '<i data-lucide="eye" width="12" height="12"></i> Взята в работу',
+        assign_role:    '<i data-lucide="user" width="12" height="12"></i> Назначена роль',
+        set_role:       '<i data-lucide="user-cog" width="12" height="12"></i> Роль изменена',
+        remove_role:    '<i data-lucide="x-circle" width="12" height="12"></i> Роль снята',
+        pin_ad:         '<i data-lucide="pin" width="12" height="12"></i> Пин объявления',
+        grant_badge:    '<i data-lucide="award" width="12" height="12"></i> Бейдж выдан',
+        revoke_badge:   '<i data-lucide="award" width="12" height="12"></i> Бейдж отозван',
+        resolve_bugreport: '<i data-lucide="check" width="12" height="12"></i> Баг-репорт закрыт',
+        delete_bugreport:  '<i data-lucide="trash-2" width="12" height="12"></i> Баг-репорт удалён',
+    };
+    const typeColors = {
+        delete_ad:      '#f44336',
+        ban_user:       '#9c27b0',
+        warn_user:      '#ff9800',
+        resolve_report: '#4caf50',
+        dismiss_report: '#757575',
+        delete_report:  '#f44336',
+        unban_user:     '#2196f3',
+        view_report:    '#607d8b',
+        assign_role:    '#00bcd4',
+        set_role:       '#00bcd4',
+        remove_role:    '#ff5722',
+        pin_ad:         '#ffc107',
+        grant_badge:    '#ffd700',
+        revoke_badge:   '#8d6e63',
+        resolve_bugreport: '#4caf50',
+        delete_bugreport:  '#f44336',
+    };
+
+    const table = document.getElementById('logsTable');
+    if (!table) return;
+    if (!filtered.length) { table.innerHTML = `<div class="empty-state"><p>Нет записей</p></div>`; return; }
+    table.innerHTML = filtered.map(l => {
+        const color = typeColors[l.action] || '#888';
+        const roleIcon = ROLE_CONFIG[l.role]?.icon || '<i data-lucide="user" width="12" height="12"></i>';
+        return `
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div style="padding:4px 8px;background:${color}18;border-radius:6px;font-size:12px;color:${color};white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;">${typeLabels[l.action] || l.action}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="color:white;font-size:13px;">${escapeHtml(l.details || '—')}</div>
+                <div style="color:#666;font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px;">${roleIcon} ${escapeHtml(l.admin)} · ${formatDate(l.timestamp)}</div>
+            </div>
+        </div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+// Фильтры журнала
+document.getElementById('logActionFilter')?.addEventListener('change', loadLogs);
+document.getElementById('logSearch')?.addEventListener('input', loadLogs);
+
+// ===== СТАТИСТИКА ПЛАТФОРМЫ (только Owner) =====
+async function loadPlatformStats() {
+    const panel = document.getElementById('platformPanel');
+    if (!panel) return;
+    const [ads, reports, banned, logs] = await Promise.all([getAllAds(), getReports(), getBannedUsers(), getAdminLogs()]);
+    const bannedCount = Object.keys(banned).length;
+    const todayLogs = logs.filter(l => l.timestamp?.startsWith(new Date().toISOString().split('T')[0]));
+    const categories = {};
+    ads.forEach(ad => { categories[ad.category] = (categories[ad.category] || 0) + 1; });
+    const catNames = CATEGORY_SIDEBAR_NAMES;
+
+    panel.innerHTML = `
+    <h3 style="color:white;margin:0 0 20px;display:flex;align-items:center;gap:8px;"><i data-lucide="bar-chart-3" width="18" height="18"></i> Статистика платформы</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;">
+        ${[['file-text','Объявлений',ads.length,'#ff6b6b'],['flag','Жалоб',reports.length,'#ffa726'],['ban','Заблок.',bannedCount,'#ce93d8'],['zap','Действий сегодня',todayLogs.length,'#4fc3f7']].map(([icon,label,val,color]) => `
+        <div style="background:rgba(17,17,17,0.9);border:1px solid ${color}22;border-radius:12px;padding:16px;text-align:center;">
+            <div style="display:flex;justify-content:center;color:${color};"><i data-lucide="${icon}" width="26" height="26"></i></div>
+            <div style="font-size:26px;font-weight:700;color:${color};margin:6px 0;">${val}</div>
+            <div style="color:#666;font-size:13px;">${label}</div>
+        </div>`).join('')}
+    </div>
+    <h4 style="color:#888;margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:1px;">По категориям</h4>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        ${Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([cat,count]) => {
+            const pct = Math.round(count / ads.length * 100);
+            return `<div style="display:flex;align-items:center;gap:10px;">
+                <span style="color:#aaa;width:90px;font-size:13px;">${catNames[cat]||cat}</span>
+                <div style="flex:1;background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden;">
+                    <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#ff1e1e,#ff6b6b);border-radius:4px;"></div>
+                </div>
+                <span style="color:#666;font-size:13px;width:40px;text-align:right;">${count}</span>
+            </div>`;
+        }).join('')}
+    </div>`;
+    if (window.lucide) lucide.createIcons();
+}
+
+// ===== УПРАВЛЕНИЕ РОЛЯМИ (только Owner) =====
+// ─────────────────────────────────────────────
+// УПРАВЛЕНИЕ БЕЙДЖАМИ
+// ─────────────────────────────────────────────
+async function loadBadgesPanel() {
+    const panel = document.getElementById('badgesPanel');
+    if (!panel) return;
+
+    const users = await getUsers();
+
+    panel.innerHTML = `
+    <h3 style="color:white;margin:0 0 20px;display:flex;align-items:center;gap:8px;"><i data-lucide="award" width="18" height="18"></i> Управление бейджами</h3>
+
+    <!-- Форма выдачи -->
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="flex:1;min-width:150px;position:relative;">
+                <label style="color:#888;font-size:12px;display:block;margin-bottom:6px;">Никнейм</label>
+                <input id="badgeNickInput" placeholder="Начните вводить никнейм..."
+                    autocomplete="off"
+                    oninput="filterBadgeNicks(this.value)"
+                    onfocus="filterBadgeNicks(this.value)"
+                    style="width:100%;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;box-sizing:border-box;">
+                <!-- Дропдаун автодополнения -->
+                <div id="badgeNickDropdown" style="
+                    display:none;position:absolute;top:100%;left:0;right:0;z-index:100;
+                    background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);
+                    border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;
+                    box-shadow:0 8px 24px rgba(0,0,0,0.5);
+                "></div>
+            </div>
+            <div style="min-width:220px;">
+                <label style="color:#888;font-size:12px;display:block;margin-bottom:6px;">Бейдж</label>
+                <select id="badgeKeySelect" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;">
+                    ${Object.entries(BADGES_CONFIG).map(([key, cfg]) =>
+                        `<option value="${key}">${cfg.icon} ${cfg.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="grantBadge()" style="padding:10px 18px;background:linear-gradient(135deg,#1D9E75,#0d7a59);border:none;border-radius:8px;color:white;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i data-lucide="check" width="14" height="14"></i> Выдать</button>
+                <button onclick="revokeBadge()" style="padding:10px 18px;background:rgba(255,30,30,0.15);border:1px solid rgba(255,30,30,0.3);border-radius:8px;color:#ff6b6b;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i data-lucide="x" width="14" height="14"></i> Забрать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Поиск по списку -->
+    <div style="margin-bottom:12px;position:relative;">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#666;pointer-events:none;"><i data-lucide="search" width="14" height="14"></i></span>
+        <input id="badgeUserSearch" placeholder="Фильтр по нику..."
+            oninput="filterBadgeUserList(this.value)"
+            style="width:100%;padding:10px 14px 10px 34px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:white;font-size:14px;box-sizing:border-box;">
+    </div>
+
+    <!-- Список всех юзеров -->
+    <div id="badgesUserList"></div>`;
+
+    if (window.lucide) lucide.createIcons();
+
+    // Сохраняем юзеров глобально для фильтрации
+    window._badgeUsers = users;
+    renderBadgeUserList(users, '');
+
+    // Закрываем дропдаун при клике вне
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#badgeNickInput') && !e.target.closest('#badgeNickDropdown')) {
+            document.getElementById('badgeNickDropdown')?.style && (document.getElementById('badgeNickDropdown').style.display = 'none');
+        }
+    }, { once: false });
+}
+
+function renderBadgeUserList(users, filter) {
+    const el = document.getElementById('badgesUserList');
+    if (!el) return;
+    const filtered = filter
+        ? users.filter(u => u.nickname?.toLowerCase().includes(filter.toLowerCase()))
+        : users;
+
+    if (filtered.length === 0) {
+        el.innerHTML = `<div style="color:#555;text-align:center;padding:24px;">Никого не найдено</div>`;
+        return;
+    }
+
+    el.innerHTML = filtered.map(u => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;margin-bottom:6px;flex-wrap:wrap;cursor:pointer;"
+            onclick="document.getElementById('badgeNickInput').value='${escapeHtml(u.nickname)}'; document.getElementById('badgeNickDropdown').style.display='none';">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,30,30,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ff6b6b;flex-shrink:0;">${u.nickname?.charAt(0).toUpperCase()}</div>
+            <div style="font-weight:600;color:white;min-width:80px;">${escapeHtml(u.nickname)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;flex:1;">
+                ${u.badges?.length
+                    ? u.badges.map(k => {
+                        const cfg = BADGES_CONFIG[k];
+                        return cfg ? `<span style="background:${cfg.color}18;color:${cfg.color};border:1px solid ${cfg.color}40;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;">${cfg.icon} ${cfg.label}</span>` : '';
+                    }).join('')
+                    : '<span style="color:#444;font-size:12px;">нет бейджей</span>'
+                }
+            </div>
+        </div>`
+    ).join('');
+}
+
+window.filterBadgeNicks = function(val) {
+    const dropdown = document.getElementById('badgeNickDropdown');
+    if (!dropdown) return;
+    const users = window._badgeUsers || [];
+    const matches = val
+        ? users.filter(u => u.nickname?.toLowerCase().includes(val.toLowerCase())).slice(0, 8)
+        : users.slice(0, 8);
+
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = matches.map(u => `
+        <div onclick="document.getElementById('badgeNickInput').value='${escapeHtml(u.nickname)}'; document.getElementById('badgeNickDropdown').style.display='none';"
+            style="padding:9px 14px;cursor:pointer;color:white;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.05);"
+            onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+            onmouseout="this.style.background=''">
+            ${escapeHtml(u.nickname)}
+            ${u.badges?.length ? `<span style="color:#555;font-size:12px;margin-left:6px;">${u.badges.length} бейдж${u.badges.length > 1 ? 'а' : ''}</span>` : ''}
+        </div>`
+    ).join('');
+};
+
+window.filterBadgeUserList = function(val) {
+    renderBadgeUserList(window._badgeUsers || [], val);
+};
+
+
+window.grantBadge = async function() {
+    if (!requireRole('manage_roles')) return;
+    const nick = document.getElementById('badgeNickInput')?.value.trim();
+    const key  = document.getElementById('badgeKeySelect')?.value;
+    if (!nick) { showToast('Введите никнейм', 'error'); return; }
+
+    const users = await getUsers();
+    const idx = users.findIndex(u => u.nickname === nick);
+    if (idx === -1) { showToast('Пользователь не найден', 'error'); return; }
+
+    const badges = users[idx].badges || [];
+    if (badges.includes(key)) { showToast('Бейдж уже есть', 'warning'); return; }
+    users[idx].badges = [...badges, key];
+    await updateUserFields(nick, { badges: users[idx].badges });
+    await saveAdminLog({ type: 'grant_badge', target: nick, details: `Бейдж: ${BADGES_CONFIG[key]?.label}` });
+    showToast(`Бейдж "${BADGES_CONFIG[key]?.label}" выдан ${nick}`, 'success');
+    await loadBadgesPanel();
+};
+
+window.revokeBadge = async function() {
+    if (!requireRole('manage_roles')) return;
+    const nick = document.getElementById('badgeNickInput')?.value.trim();
+    const key  = document.getElementById('badgeKeySelect')?.value;
+    if (!nick) { showToast('Введите никнейм', 'error'); return; }
+
+    const users = await getUsers();
+    const idx = users.findIndex(u => u.nickname === nick);
+    if (idx === -1) { showToast('Пользователь не найден', 'error'); return; }
+
+    const before = users[idx].badges || [];
+    users[idx].badges = before.filter(b => b !== key);
+    if (before.length === users[idx].badges.length) { showToast('У пользователя нет этого бейджа', 'warning'); return; }
+    await updateUserFields(nick, { badges: users[idx].badges });
+    await saveAdminLog({ type: 'revoke_badge', target: nick, details: `Бейдж: ${BADGES_CONFIG[key]?.label}` });
+    showToast(`Бейдж "${BADGES_CONFIG[key]?.label}" забран у ${nick}`, 'success');
+    await loadBadgesPanel();
+};
+
+// ─────────────────────────────────────────────
+// ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ (только owner)
+// ─────────────────────────────────────────────
+async function loadUsersPanel() {
+    const panel = document.getElementById('usersPanel');
+    if (!panel) return;
+
+    const [users, ads, roles] = await Promise.all([getUsers(), getAllAds(), getDoc(doc(db, 'data', 'roles'))]);
+    const rolesMap = roles.exists() ? (roles.data().items || {}) : {};
+    const adCounts = {};
+    ads.forEach(a => { adCounts[a.author] = (adCounts[a.author] || 0) + 1; });
+
+    window._adminUsers = users;
+    window._adminRolesMap = rolesMap;
+    window._adminAdCounts = adCounts;
+
+    panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <h3 style="color:white;margin:0;display:flex;align-items:center;gap:8px;"><i data-lucide="users" width="18" height="18"></i> Пользователи (${users.length})</h3>
+        <input id="userSearchInput" placeholder="Поиск по нику..."
+            oninput="filterUsersTable(this.value)"
+            style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;width:200px;">
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <thead>
+                <tr style="background:rgba(255,255,255,0.04);color:#888;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">
+                    <th style="padding:10px 14px;text-align:left;font-weight:500;">Ник</th>
+                    <th style="padding:10px 12px;text-align:left;font-weight:500;">Роль</th>
+                    <th style="padding:10px 12px;text-align:left;font-weight:500;">Сервер</th>
+                    <th style="padding:10px 12px;text-align:center;font-weight:500;">Объявлений</th>
+                    <th style="padding:10px 12px;text-align:right;font-weight:500;">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+        </table>
+    </div>`;
+
+    if (window.lucide) lucide.createIcons();
+    renderUsersTable(users, rolesMap, adCounts);
+}
+
+function renderUsersTable(users, rolesMap, adCounts) {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+
+    const ROLE_COLORS = { owner: '#ffd700', admin: '#e05fff', moder: '#5b9dff' };
+
+    tbody.innerHTML = users.map(u => {
+        const role = rolesMap[u.nickname] || rolesMap[u.nickname?.toLowerCase()] || 'user';
+        const roleColor = ROLE_COLORS[role] || '#666';
+        const adCount = adCounts[u.nickname] || 0;
+        const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—';
+        const badges = u.badges?.length ? `<span style="color:#555;font-size:12px;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="award" width="12" height="12"></i> ${u.badges.length}</span>` : '';
+
+        return `<tr style="border-top:1px solid rgba(255,255,255,0.05);transition:background 0.15s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.03)'"
+            onmouseout="this.style.background=''">
+            <td style="padding:10px 14px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,30,30,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ff6b6b;font-size:12px;flex-shrink:0;">${u.nickname?.charAt(0).toUpperCase()}</div>
+                    <span style="color:white;font-weight:500;">${escapeHtml(u.nickname)}</span>
+                    ${badges}
+                </div>
+            </td>
+            <td style="padding:10px 12px;">
+                <span style="background:${roleColor}18;color:${roleColor};border:1px solid ${roleColor}40;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;">${ROLE_CONFIG[role]?.name || 'Пользователь'}</span>
+            </td>
+            <td style="padding:10px 12px;color:#888;">${escapeHtml(u.server || '—')}</td>
+            <td style="padding:10px 12px;text-align:center;color:#aaa;">${adCount}</td>
+            <td style="padding:10px 12px;text-align:right;">
+                <button onclick="openUserCard('${escapeHtml(u.nickname)}')"
+                    style="padding:6px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ccc;font-size:13px;cursor:pointer;">
+                    Открыть
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+window.filterUsersTable = function(val) {
+    const users = (window._adminUsers || []).filter(u =>
+        u.nickname?.toLowerCase().includes(val.toLowerCase())
+    );
+    renderUsersTable(users, window._adminRolesMap || {}, window._adminAdCounts || {});
+};
+
+window.openUserCard = async function(nickname) {
+    const users = window._adminUsers || [];
+    const u = users.find(u => u.nickname === nickname);
+    if (!u) return;
+
+    const rolesMap = window._adminRolesMap || {};
+    const adCounts = window._adminAdCounts || {};
+    const role = rolesMap[nickname] || rolesMap[nickname?.toLowerCase()] || 'user';
+    const adCount = adCounts[nickname] || 0;
+    const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—';
+
+    const existing = document.getElementById('userCardModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'userCardModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = `
+    <div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h3 style="color:white;margin:0;">Пользователь</h3>
+            <button onclick="document.getElementById('userCardModal').remove()"
+                style="background:none;border:none;color:#666;cursor:pointer;display:flex;align-items:center;"><i data-lucide="x" width="20" height="20"></i></button>
+        </div>
+
+        <!-- Инфо -->
+        <div style="display:flex;align-items:center;gap:14px;padding:16px;background:rgba(255,255,255,0.03);border-radius:12px;margin-bottom:16px;">
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,30,30,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#ff6b6b;flex-shrink:0;">${nickname.charAt(0).toUpperCase()}</div>
+            <div>
+                <div style="color:white;font-size:18px;font-weight:600;">${escapeHtml(nickname)}</div>
+                <div style="color:#666;font-size:13px;margin-top:2px;">Сервер: ${escapeHtml(u.server || '—')} · Рег: ${regDate} · Объявлений: ${adCount}</div>
+            </div>
+        </div>
+
+        <!-- Роль -->
+        <div style="margin-bottom:14px;">
+            <label style="color:#888;font-size:12px;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Роль</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${['user','moder','admin','owner'].map(r => {
+                    const cfg = ROLE_CONFIG[r];
+                    const label = cfg ? cfg.name : 'Пользователь'; // 'user' — не роль, а её отсутствие, в ROLE_CONFIG нет записи
+                    return `
+                    <button onclick="setUserRole('${escapeHtml(nickname)}', '${r}')"
+                        style="padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;
+                        ${role === r
+                            ? 'background:rgba(255,30,30,0.2);border:1px solid rgba(255,30,30,0.4);color:#ff6b6b;'
+                            : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;'
+                        }">${label}</button>
+                `;}).join('')}
+            </div>
+        </div>
+
+        <!-- Бейджи -->
+        <div style="margin-bottom:14px;">
+            <label style="color:#888;font-size:12px;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Бейджи</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                ${Object.entries(BADGES_CONFIG).map(([key, cfg]) => {
+                    const has = u.badges?.includes(key);
+                    return `<button onclick="toggleUserBadge('${escapeHtml(nickname)}', '${key}')"
+                        title="${cfg.label}"
+                        style="padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;
+                        ${has
+                            ? `background:${cfg.color}25;border:1px solid ${cfg.color}60;color:${cfg.color};`
+                            : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#aaa;'
+                        }">${cfg.icon} ${cfg.label}</button>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);">
+            <a href="profile.html?user=${encodeURIComponent(nickname)}" target="_blank"
+                style="padding:9px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ccc;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <i data-lucide="user" width="14" height="14"></i> Профиль
+            </a>
+            <button onclick="openPunishModal('${escapeHtml(nickname)}')"
+                style="padding:9px 16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;color:#ffa726;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                <i data-lucide="hammer" width="14" height="14"></i> Наказать
+            </button>
+        </div>
+    </div>`;
+
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+    if (window.lucide) lucide.createIcons();
+};
+
+window.setUserRole = async function(nickname, role) {
+    if (!requireRole('manage_roles')) return; // раньше у этой функции не было проверки прав на клиенте, в отличие от остальных ролевых действий — не дыра (Firestore Rules и так требуют isOwner() на сервере), но для единообразия стоит добавить
+    const roleLabel = ROLE_CONFIG[role]?.name || 'Пользователь';
+    const roles = await getDoc(doc(db, 'data', 'roles'));
+    const items = roles.exists() ? (roles.data().items || {}) : {};
+    if (role === 'user') {
+        delete items[nickname];
+        delete items[nickname.toLowerCase()];
+    } else {
+        items[nickname] = role;
+    }
+    await setDoc(doc(db, 'data', 'roles'), { items });
+    await saveAdminLog({ type: 'set_role', target: nickname, details: `Роль → ${roleLabel}` });
+    window._adminRolesMap = items;
+    showToast(`Роль ${nickname} → ${roleLabel}`, 'success');
+    // Обновляем кнопки в карточке
+    document.getElementById('userCardModal')?.remove();
+    openUserCard(nickname);
+};
+
+window.toggleUserBadge = async function(nickname, key) {
+    const users = await getUsers();
+    const idx = users.findIndex(u => u.nickname === nickname);
+    if (idx === -1) return;
+    const badges = users[idx].badges || [];
+    const has = badges.includes(key);
+    users[idx].badges = has ? badges.filter(b => b !== key) : [...badges, key];
+    await updateUserFields(nickname, { badges: users[idx].badges });
+    await saveAdminLog({ type: has ? 'revoke_badge' : 'grant_badge', target: nickname, details: BADGES_CONFIG[key]?.label });
+    window._adminUsers = users;
+    showToast(`${has ? 'Забран' : 'Выдан'}: ${BADGES_CONFIG[key]?.label}`, 'success');
+    document.getElementById('userCardModal')?.remove();
+    openUserCard(nickname);
+};
+
+async function loadRoles() {
+    const panel = document.getElementById('rolesPanel');
+    if (!panel) return;
+    const roles = await getRoles();
+
+    panel.innerHTML = `
+    <h3 style="color:white;margin:0 0 20px;display:flex;align-items:center;gap:8px;"><i data-lucide="users" width="18" height="18"></i> Управление ролями</h3>
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="flex:1;min-width:150px;">
+                <label style="color:#888;font-size:12px;display:block;margin-bottom:6px;">Никнейм</label>
+                <input id="roleNickInput" placeholder="Введите никнейм..." style="width:100%;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="min-width:180px;">
+                <label style="color:#888;font-size:12px;display:block;margin-bottom:6px;">Роль</label>
+                <div style="position:relative;">
+                    <div id="roleSelectBtn" onclick="toggleRoleDropdown()" style="padding:10px 36px 10px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:14px;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;">
+                        <i data-lucide="hammer" width="14" height="14"></i> Модератор
+                    </div>
+                    <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#888;pointer-events:none;">▾</span>
+                    <div id="roleDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);border-radius:8px;margin-top:4px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                        <div onclick="selectRole('moder','&lt;i data-lucide=&quot;hammer&quot; width=&quot;14&quot; height=&quot;14&quot;&gt;&lt;/i&gt; Модератор')" style="padding:11px 14px;cursor:pointer;color:#74b9ff;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(116,185,255,0.1)'" onmouseout="this.style.background=''"><i data-lucide="hammer" width="14" height="14"></i> Модератор</div>
+                        <div onclick="selectRole('admin','&lt;i data-lucide=&quot;shield&quot; width=&quot;14&quot; height=&quot;14&quot;&gt;&lt;/i&gt; Администратор')" style="padding:11px 14px;cursor:pointer;color:#ff6b6b;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(255,107,107,0.1)'" onmouseout="this.style.background=''"><i data-lucide="shield" width="14" height="14"></i> Администратор</div>
+                        <div onclick="selectRole('owner','&lt;i data-lucide=&quot;crown&quot; width=&quot;14&quot; height=&quot;14&quot;&gt;&lt;/i&gt; Владелец')" style="padding:11px 14px;cursor:pointer;color:#f9ca24;font-size:14px;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(249,202,36,0.1)'" onmouseout="this.style.background=''"><i data-lucide="crown" width="14" height="14"></i> Владелец</div>
+                    </div>
+                    <input type="hidden" id="roleSelect" value="moder">
+                </div>
+            </div>
+            <button onclick="assignRole()" style="padding:10px 20px;background:linear-gradient(135deg,#ff1e1e,#cc0000);border:none;border-radius:8px;color:white;font-weight:600;cursor:pointer;">Назначить</button>
+        </div>
+    </div>
+    <div id="rolesList">
+        ${Object.entries(roles).length === 0 ? '<div class="empty-state"><p>Нет назначенных ролей</p></div>' :
+        Object.entries(roles).map(([nick, role]) => {
+            const cfg = ROLE_CONFIG[role] || {};
+            return `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;">
+                <div style="width:38px;height:38px;border-radius:50%;background:${cfg.color}22;border:2px solid ${cfg.color}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${cfg.icon||'?'}</div>
+                <div style="flex:1;">
+                    <div style="color:white;font-weight:600;">${escapeHtml(nick)}</div>
+                    <div style="color:${cfg.color};font-size:13px;">${cfg.name||role}</div>
+                </div>
+                ${nick !== currentUser.nickname ? `<button onclick="removeRole('${nick}')" style="padding:6px 12px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);color:#f44336;border-radius:6px;cursor:pointer;font-size:12px;">Снять</button>` : '<span style="color:#555;font-size:12px;">Вы</span>'}
+            </div>`;
+        }).join('')}
+    </div>`;
+    if (window.lucide) lucide.createIcons();
+}
+
+window.toggleRoleDropdown = function() {
+    const drop = document.getElementById('roleDropdown');
+    if (drop) drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+};
+window.selectRole = function(value, label) {
+    document.getElementById('roleSelect').value = value;
+    document.getElementById('roleSelectBtn').innerHTML = label;
+    document.getElementById('roleDropdown').style.display = 'none';
+    if (window.lucide) lucide.createIcons();
+};
+// Закрываем при клике вне
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#roleSelectBtn') && !e.target.closest('#roleDropdown')) {
+        const drop = document.getElementById('roleDropdown');
+        if (drop) drop.style.display = 'none';
+    }
+});
+
+window.assignRole = async function() {
+    if (!requireRole('manage_roles')) return;
+    const nick = document.getElementById('roleNickInput')?.value.trim();
+    const role = document.getElementById('roleSelect')?.value;
+    if (!nick) { showToast('Введите никнейм', 'error'); return; }
+    const roles = await getRoles();
+    roles[nick] = role;
+    await saveRoles(roles);
+    await saveAdminLog({ type: 'assign_role', target: nick, details: `Роль: ${ROLE_CONFIG[role]?.name}` });
+    await loadRoles();
+    showToast(`Роль ${ROLE_CONFIG[role]?.name} назначена ${nick}`, 'success');
+};
+
+window.removeRole = async function(nick) {
+    if (!requireRole('manage_roles')) return;
+    if (!(await customConfirm(`Снять роль с ${nick}?`, 'Снять'))) return;
+    const roles = await getRoles();
+    delete roles[nick];
+    await saveRoles(roles);
+    await saveAdminLog({ type: 'remove_role', target: nick, details: 'Роль снята' });
+    await loadRoles();
+    showToast(`Роль снята с ${nick}`, 'success');
+};
+
+// ===== ВСПОМОГАТЕЛЬНЫЕ =====
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatDate(ts) {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function formatRemaining(ms) {
+    if (ms <= 0) return 'Истёк';
+    const h = Math.floor(ms / 3600000);
+    const d = Math.floor(h / 24);
+    if (d > 0) return `${d} д ${h % 24} ч`;
+    return `${h} ч`;
+}
+
+// ===== ПИН ОБЪЯВЛЕНИЙ (admin+) =====
+window.togglePinAd = async function(adId) {
+    if (!canDo('pin_ad')) { showToast('Недостаточно прав', 'error'); return; }
+    const adRef = doc(db, 'ads', String(adId));
+    const snap = await getDoc(adRef);
+    if (!snap.exists()) { showToast('Объявление не найдено', 'error'); return; }
+    const pinned = !snap.data().pinned;
+    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    await updateDoc(adRef, { pinned });
+    await saveAdminLog({ type: 'pin_ad', target: adId, details: pinned ? 'Закреплено' : 'Откреплено' });
+    showToast(pinned ? '📌 Объявление закреплено' : 'Объявление откреплено', 'success');
+};
+
+// ===== ВЕРИФИКАЦИЯ ПРОДАВЦА (owner) =====
+window.toggleVerify = async function(nickname) {
+    if (!requireRole('manage_roles')) return;
+    const ads = await getAllAds();
+    const hasVerified = ads.some(a => a.author === nickname && a.verifiedSeller);
+    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    for (const ad of ads) {
+        if (ad.author === nickname) {
+            await updateDoc(doc(db, 'ads', String(ad.id)), { verifiedSeller: !hasVerified });
+        }
+    }
+    await saveAdminLog({ type: hasVerified ? 'revoke_badge' : 'grant_badge', target: nickname, details: hasVerified ? 'Верификация продавца снята' : 'Верификация продавца выдана' });
+    showToast(hasVerified ? `Верификация снята с ${nickname}` : `${nickname} верифицирован ✓`, 'success');
+};
+
+
+// ===== БАГ-РЕПОРТЫ =====
+async function loadBugReports() {
+    const panel = document.getElementById('bugReportsPanel');
+    if (!panel) return;
+
+    panel.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">Загрузка...</div>';
+
+    try {
+        const bugReports = (await getBugReportsDocs())
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        if (bugReports.length === 0) {
+            panel.innerHTML = '<div style="text-align:center;padding:40px;color:#555;display:flex;flex-direction:column;align-items:center;gap:10px;"><i data-lucide="bug" width="26" height="26"></i> Баг-репортов пока нет</div>';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+
+        const typeLabels = {
+            bug:         '<i data-lucide="bug" width="12" height="12"></i> Баг',
+            ui:          '<i data-lucide="palette" width="12" height="12"></i> Интерфейс',
+            performance: '<i data-lucide="zap" width="12" height="12"></i> Тормоза',
+            chat:        '<i data-lucide="message-circle" width="12" height="12"></i> Чат',
+            ads:         '<i data-lucide="file-text" width="12" height="12"></i> Объявления',
+            other:       '<i data-lucide="lightbulb" width="12" height="12"></i> Другое',
+        };
+        const statusBadge = {
+            new:      '<span style="color:#ff9800;">●</span> Новый',
+            viewed:   '<span style="color:#2196f3;">●</span> В работе',
+            resolved: '<span style="color:#4caf50;">●</span> Решено',
+        };
+
+        panel.innerHTML = bugReports.map(r => `
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:13px;font-weight:700;color:#ff9800;display:inline-flex;align-items:center;gap:4px;">${typeLabels[r.type] || r.type}</span>
+                        <span style="font-size:11px;color:#555;">· ${escapeHtml(r.author)} · ${escapeHtml(r.server || '—')} · ${escapeHtml(r.page || '—')}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;color:#ccc;">${statusBadge[r.status] || statusBadge.new}</span>
+                        <span style="font-size:11px;color:#444;">${new Date(r.createdAt).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                    </div>
+                </div>
+                <div style="font-size:14px;color:#ccc;line-height:1.6;margin-bottom:${r.photo ? '12px' : '14px'};">${escapeHtml(r.description)}</div>
+                ${r.photo ? `
+                <img src="${r.photo}" alt="Скриншот" onclick="openBugPhoto('${r.photo.replace(/'/g, "\\'")}')"
+                     style="width:110px;height:78px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.12);cursor:pointer;display:block;margin-bottom:14px;transition:opacity .15s;"
+                     onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                ` : ''}
+                <div style="display:flex;gap:8px;">
+                    ${r.status !== 'resolved' ? `<button onclick="resolveBugReport(${r.id})" style="padding:6px 12px;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3);border-radius:6px;color:#4caf50;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="check" width="12" height="12"></i> Решено</button>` : ''}
+                    <button onclick="deleteBugReport(${r.id})" style="padding:6px 12px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.25);border-radius:6px;color:#ef5350;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="trash-2" width="12" height="12"></i> Удалить</button>
+                </div>
+            </div>
+        `).join('');
+        if (window.lucide) lucide.createIcons();
+
+    } catch(e) {
+        panel.innerHTML = '<div style="text-align:center;padding:40px;color:#f44336;">Ошибка загрузки</div>';
+    }
+}
+
+window.openBugPhoto = function(src) {
+    const overlay = document.createElement('div');
+    overlay.id = 'bugPhotoOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+    overlay.innerHTML = `
+        <img src="${src}" style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <button onclick="closeBugPhoto()" style="position:absolute;top:20px;right:20px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i data-lucide="x" width="18" height="18"></i></button>
+    `;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBugPhoto(); });
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', bugPhotoEscHandler);
+    if (window.lucide) lucide.createIcons();
+};
+
+window.closeBugPhoto = function() {
+    document.getElementById('bugPhotoOverlay')?.remove();
+    document.removeEventListener('keydown', bugPhotoEscHandler);
+};
+
+function bugPhotoEscHandler(e) {
+    if (e.key === 'Escape') closeBugPhoto();
+}
+
+window.deleteBugReport = async function(reportId) {
+    if (!(await customConfirm('Удалить баг-репорт?'))) return;
+    try {
+        await deleteBugReportDoc(reportId);
+        await saveAdminLog({ type: 'delete_bugreport', target: String(reportId), details: 'Баг-репорт удалён' });
+        await loadBugReports();
+        showToast('Баг-репорт удалён', 'success');
+    } catch(e) {
+        showToast('Ошибка удаления', 'error');
+    }
+};
+
+window.resolveBugReport = async function(reportId) {
+    try {
+        await updateBugReportDoc(reportId, { status: 'resolved' });
+        await saveAdminLog({ type: 'resolve_bugreport', target: String(reportId), details: 'Баг-репорт отмечен решённым' });
+        await loadBugReports();
+        showToast('Отмечено как решённое', 'success');
+    } catch(e) {
+        showToast('Ошибка', 'error');
+    }
+};

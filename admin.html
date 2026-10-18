@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель — Black Market</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body class="admin-body">
 
@@ -13,7 +15,7 @@
 
 <div class="admin-container">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-        <h1 class="admin-title" style="margin:0;">🛡️ Админ-панель</h1>
+        <h1 class="admin-title" style="margin:0;display:flex;align-items:center;gap:10px;justify-content:center;"><i data-lucide="shield" width="26" height="26"></i> Админ-панель</h1>
         <div id="roleBadge"></div>
     </div>
 
@@ -48,8 +50,8 @@
     <div class="mass-actions-panel hidden" id="massActionsPanel">
         <span class="mass-actions-count">Выбрано: <strong id="selectedCount">0</strong></span>
         <div class="mass-actions-btns">
-            <button class="mass-btn resolve" onclick="massTakeInWork()">⚡ Взять в работу</button>
-            <button class="mass-btn resolve" onclick="massResolve()">✓ Отметить решёнными</button>
+            <button class="mass-btn resolve" onclick="massTakeInWork()" style="display:inline-flex;align-items:center;gap:6px;"><i data-lucide="zap" width="14" height="14"></i> Взять в работу</button>
+            <button class="mass-btn resolve" onclick="massResolve()" style="display:inline-flex;align-items:center;gap:6px;"><i data-lucide="check" width="14" height="14"></i> Отметить решёнными</button>
             <button class="mass-btn cancel" onclick="document.querySelectorAll('.report-checkbox').forEach(c=>c.checked=false); selectedReports?.clear(); document.getElementById('massActionsPanel').classList.add('hidden');">Отмена</button>
         </div>
     </div>
@@ -65,9 +67,19 @@
                 <option value="delete_ad">Удаление</option>
                 <option value="ban_user">Баны</option>
                 <option value="warn_user">Предупреждения</option>
-                <option value="resolve_report">Жалобы</option>
+                <option value="resolve_report">Жалобы закрыты</option>
+                <option value="dismiss_report">Жалобы отклонены</option>
+                <option value="delete_report">Жалобы удалены</option>
+                <option value="view_report">Жалобы взяты в работу</option>
                 <option value="unban_user">Разбаны</option>
                 <option value="assign_role">Назначение ролей</option>
+                <option value="set_role">Изменение ролей</option>
+                <option value="remove_role">Снятие ролей</option>
+                <option value="pin_ad">Пин объявлений</option>
+                <option value="grant_badge">Выдача бейджей</option>
+                <option value="revoke_badge">Отзыв бейджей</option>
+                <option value="resolve_bugreport">Баг-репорты закрыты</option>
+                <option value="delete_bugreport">Баг-репорты удалены</option>
             </select>
             <input type="text" id="logSearch" placeholder="Поиск...">
         </div>
@@ -89,8 +101,9 @@
     <div class="hidden" id="bugReportsPanel" style="margin-top:16px;"></div>
 </div>
 
-<script type="module" src="error-logger.js"></script>
-<script type="module" src="firebase-config.js"></script>
-<script type="module" src="admin.js"></script>
+<script>document.addEventListener("DOMContentLoaded", () => { if (window.lucide) lucide.createIcons(); });</script>
+<script type="module" src="js/error-logger.js"></script>
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/admin.js"></script>
 </body>
 </html>

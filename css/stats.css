@@ -1,0 +1,30 @@
+/* =============================================
+   STATS — страница stats.html
+   ============================================= */
+
+@media (max-width: 768px) {
+    .stats-page-wrapper { padding: 50px 12px 20px !important; }
+    .stats-page-wrapper { padding-top: 55px !important; }
+    .stats-page-wrapper > div > div:first-of-type {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 20px !important;
+    }
+    .stats-page-wrapper > div > div:first-of-type > div {
+        padding: 14px 10px !important;
+    }
+    .stats-page-wrapper > div > div:first-of-type > div > div:first-child {
+        font-size: 24px !important;
+        margin-bottom: 6px !important;
+    }
+    .stats-page-wrapper > div > div:first-of-type > div [id*="total"],
+    .stats-page-wrapper > div > div:first-of-type > div [id*="conversion"] {
+        font-size: 24px !important;
+    }
+    .stats-page-wrapper h1 {
+        font-size: 22px !important;
+    }
+    .stats-page-wrapper {
+        padding: 16px 12px !important;
+    }
+}

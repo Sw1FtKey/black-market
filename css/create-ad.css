@@ -1,0 +1,447 @@
+/* =============================================
+   CREATE-AD — форма создания объявления
+   ============================================= */
+
+.create-ad-body {
+    min-height: 100vh;
+    position: relative;
+    background-image: url('../Fon3.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.create-ad-body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    filter: blur(8px);
+    z-index: -1;
+    transform: scale(1.1);
+}
+
+.create-ad-container {
+    background: rgba(17, 17, 17, 0.95);
+    backdrop-filter: blur(20px);
+    padding: 40px;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 600px;
+    border: 1px solid rgba(255, 30, 30, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.create-item-title {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 30px;
+    color: white;
+}
+
+.create-ad-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.extra-fields {
+    animation: slideDown 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.submit-ad-btn {
+    padding: 16px;
+    background: linear-gradient(135deg, #ff1e1e 0%, #cc0000 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 10px;
+}
+
+.submit-ad-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(255, 30, 30, 0.4);
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(34, 34, 34, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.checkbox-label, .radio-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #ddd;
+    font-size: 14px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.checkbox-label:hover, .radio-label:hover { color: #ff1e1e; }
+
+.checkbox-label input,
+.radio-label input {
+    width: 18px;
+    height: 18px;
+    accent-color: #ff1e1e;
+    cursor: pointer;
+}
+
+.nested-options {
+    margin: 8px 0 8px 28px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: slideDown 0.2s ease;
+}
+
+.photo-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.upload-btn {
+    padding: 14px 20px;
+    background: rgba(255, 30, 30, 0.1);
+    border: 2px dashed rgba(255, 30, 30, 0.4);
+    border-radius: 12px;
+    color: #ff1e1e;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.upload-btn:hover {
+    background: rgba(255, 30, 30, 0.2);
+    border-color: #ff1e1e;
+}
+
+.upload-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.photo-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+}
+
+.photo-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remove-photo {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 30, 30, 0.9);
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.remove-photo:hover {
+    background: #ff1e1e;
+    transform: scale(1.1);
+}
+
+.photo-hint {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    margin: 0;
+}
+
+/* ===== Предложение стоковой заглушки фото ===== */
+.stock-photo-suggest {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    background: rgba(255, 30, 30, 0.06);
+    border: 1px dashed rgba(255, 30, 30, 0.3);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 4px;
+}
+
+.stock-photo-suggest img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.stock-photo-suggest-text p {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: #ccc;
+    line-height: 1.4;
+}
+
+.stock-photo-suggest-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stock-photo-use-btn {
+    padding: 7px 16px;
+    background: linear-gradient(135deg, #ff1e1e 0%, #cc0000 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.stock-photo-use-btn:hover { opacity: 0.85; }
+
+.stock-photo-skip-btn {
+    padding: 7px 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #aaa;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.stock-photo-skip-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.photo-preview-stock img {
+    outline: 2px dashed rgba(255, 30, 30, 0.4);
+    outline-offset: -2px;
+}
+
+@media (max-width: 480px) {
+.stock-photo-suggest {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+.stock-photo-suggest img {
+        width: 100%;
+        height: 100px;
+    }
+}
+
+.item-hint {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+@media (max-width: 600px) {
+.form-row { grid-template-columns: 1fr; }
+.create-ad-container { padding: 25px; }
+}
+
+.input-hint {
+    font-size: 12px;
+    color: #666;
+    margin: 6px 0 0 0;
+}
+
+@media (max-width: 768px) {
+.item-hint { display: none; }
+.create-ad-container {
+        padding: 16px;
+        margin: 10px;
+        border-radius: 16px;
+    }
+.create-item-title { font-size: 22px; }
+.submit-ad-btn { width: 100%; padding: 16px; font-size: 16px; }
+}
+
+@media (max-width: 768px) {
+.create-ad-container {
+        margin: 8px !important;
+        padding: 16px !important;
+    }
+.photo-preview-item {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+.submit-ad-btn {
+        padding: 16px !important;
+        font-size: 15px !important;
+    }
+}
+
+.car-model-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 30, 30, 0.25);
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 999;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.car-model-dropdown::-webkit-scrollbar {
+    width: 4px;
+}
+
+.car-model-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.car-model-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 30, 30, 0.3);
+    border-radius: 2px;
+}
+
+.car-model-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: #ccc;
+    font-size: 14px;
+}
+
+.car-model-option:last-child {
+    border-bottom: none;
+}
+
+.car-model-option::before {
+    content: '🚗';
+    font-size: 14px;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.car-model-option:hover {
+    background: rgba(255, 30, 30, 0.12);
+    color: white;
+}
+
+.car-model-option:hover::before {
+    opacity: 1;
+}
+
+.car-model-option span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#carModelGroup .form-input-wrapper {
+    position: relative;
+}
+
+.selected-model-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 30, 30, 0.12);
+    border: 1px solid rgba(255, 30, 30, 0.3);
+    color: #ff6b6b;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    margin-top: 6px;
+}
+
+@media (max-width: 480px) {
+.create-ad-container {
+        padding: 14px !important;
+        overflow-x: hidden;
+    }
+.create-ad-form {
+        overflow-x: hidden;
+    }
+.car-model-dropdown {
+        left: 0 !important;
+        right: 0 !important;
+        max-height: 240px;
+    }
+}
+
+@media (max-width: 360px) {
+.create-ad-container {
+        padding: 10px !important;
+    }
+}

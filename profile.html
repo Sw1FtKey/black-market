@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Профиль — Black Market</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/profile.css">
     <style>
         .profile-page { max-width: 720px; margin: 0 auto; padding: 20px; }
 
@@ -319,7 +320,38 @@
             color: #aaa; font-size: 13px; cursor: pointer;
         }
         .edit-avatar-hint { font-size: 11px; color: #444; }
+
+        /* ── Окошко смены пароля: 2 шага с плавным слайдом ── */
+        .pw-overlay {
+            position: fixed; inset: 0; z-index: 10000;
+            background: rgba(0,0,0,0.75);
+            display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .pw-modal {
+            background: #111; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 28px 24px;
+            width: 100%; max-width: 380px;
+        }
+        .pw-viewport { overflow: hidden; }
+        .pw-track {
+            display: flex; width: 200%;
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        }
+        .pw-step { width: 50%; flex-shrink: 0; box-sizing: border-box; }
+        .pw-step:first-child { padding-right: 6px; }
+        .pw-step:last-child { padding-left: 6px; }
+        .pw-error { color: #ff6b6b; font-size: 13px; margin: -6px 0 12px; min-height: 16px; }
+        .pw-back-link {
+            color: #888; font-size: 13px; cursor: pointer; margin-bottom: 14px;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .pw-back-link:hover { color: white; }
+        .change-password-btn {
+            width: 100%; padding: 11px; display: flex; align-items: center;
+            justify-content: center; gap: 6px;
+        }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body class="main-body">
 
@@ -363,9 +395,9 @@
 
     <!-- Табы -->
     <div class="profile-tabs">
-        <button class="profile-tab active" onclick="switchTab('ads', this)">📋 Объявления</button>
+        <button class="profile-tab active" onclick="switchTab('ads', this)"><i data-lucide="clipboard-list" width="15" height="15"></i> Объявления</button>
         <button class="profile-tab" onclick="switchTab('reviews', this)">⭐ Отзывы</button>
-        <button class="profile-tab" onclick="switchTab('achievements', this)">🏅 Достижения</button>
+        <button class="profile-tab" onclick="switchTab('achievements', this)"><i data-lucide="medal" width="15" height="15"></i> Достижения</button>
     </div>
 
     <!-- Контент -->
@@ -382,12 +414,12 @@
 <div class="edit-profile-overlay" id="editProfileOverlay" style="display:none;">
     <div class="edit-profile-modal">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-            <h3 style="color:white;font-size:18px;font-weight:700;margin:0;">✏️ Редактировать профиль</h3>
+            <h3 style="color:white;font-size:18px;font-weight:700;margin:0;"><i data-lucide="pencil" width="16" height="16"></i> Редактировать профиль</h3>
             <button onclick="closeEditProfile()" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;">×</button>
         </div>
         <div class="edit-avatar-section">
             <div class="edit-avatar-preview" id="editAvatarPreview"></div>
-            <button class="edit-avatar-btn" onclick="document.getElementById('editAvatarInput').click()">📷 Загрузить фото</button>
+            <button class="edit-avatar-btn" onclick="document.getElementById('editAvatarInput').click()"><i data-lucide="camera" width="14" height="14"></i> Загрузить фото</button>
             <input type="file" id="editAvatarInput" accept="image/*" style="display:none">
             <span class="edit-avatar-hint">JPG, PNG · до 2MB · рекомендуется квадратное</span>
         </div>
@@ -401,66 +433,70 @@
             <input type="text" id="editTelegramField" placeholder="@username">
         </div>
         <div class="edit-profile-field">
-            <label>Новый пароль</label>
-            <input type="password" id="editPasswordField" placeholder="Оставь пустым если не меняешь">
-        </div>
-        <div class="edit-profile-field" id="editConfirmGroup" style="display:none;">
-            <label>Повтори пароль</label>
-            <input type="password" id="editConfirmField" placeholder="Повтори новый пароль">
+            <label>Пароль</label>
+            <button type="button" class="edit-avatar-btn change-password-btn" onclick="openChangePassword()">
+                <i data-lucide="key-round" width="14" height="14"></i> Сменить пароль
+            </button>
         </div>
         <button class="edit-profile-save" id="editSaveBtn" onclick="saveEditProfile()">Сохранить изменения</button>
     </div>
 </div>
-<script type="module" src="error-logger.js"></script>
+
+<!-- ── ОКОШКО СМЕНЫ ПАРОЛЯ: 2 шага, плавный слайд ── -->
+<div class="pw-overlay" id="changePasswordOverlay" style="display:none;">
+    <div class="pw-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h3 style="color:white;font-size:17px;font-weight:700;margin:0;"><i data-lucide="key-round" width="16" height="16"></i> Смена пароля</h3>
+            <button onclick="closeChangePassword()" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;">×</button>
+        </div>
+        <div class="pw-viewport">
+            <div class="pw-track" id="pwSliderTrack">
+                <!-- Шаг 1 — подтверждение текущим паролем -->
+                <div class="pw-step">
+                    <div class="edit-profile-field">
+                        <label>Текущий пароль</label>
+                        <input type="password" id="pwCurrentInput" placeholder="Введи текущий пароль"
+                               onkeydown="if(event.key==='Enter')confirmCurrentPassword()">
+                    </div>
+                    <div class="pw-error" id="pwError1"></div>
+                    <button class="edit-profile-save" id="pwStep1Btn" onclick="confirmCurrentPassword()">Далее</button>
+                </div>
+                <!-- Шаг 2 — новый пароль -->
+                <div class="pw-step">
+                    <div class="pw-back-link" onclick="pwGoBack()">← Назад</div>
+                    <div class="edit-profile-field">
+                        <label>Новый пароль</label>
+                        <input type="password" id="pwNewInput" placeholder="Минимум 6 символов">
+                    </div>
+                    <div class="edit-profile-field">
+                        <label>Повтори пароль</label>
+                        <input type="password" id="pwConfirmInput" placeholder="Повтори новый пароль"
+                               onkeydown="if(event.key==='Enter')submitNewPassword()">
+                    </div>
+                    <div class="pw-error" id="pwError2"></div>
+                    <button class="edit-profile-save" id="pwStep2Btn" onclick="submitNewPassword()">Сохранить пароль</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="module" src="js/error-logger.js"></script>
+<script>document.addEventListener("DOMContentLoaded", () => { if (window.lucide) lucide.createIcons(); });</script>
 <script type="module">
-import { db, auth } from './firebase-config.js';
+import { db, auth } from './js/firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getAllAds, getReviews, getAdStats, getUserRole, findUser } from './api.js';
-import { escapeHtml, timeAgo, formatPrice } from './utils.js';
+import { getAllAds, getReviews, getAdStats, getUserRole, findUser } from './js/api.js';
+import { escapeHtml, timeAgo, formatPrice } from './js/utils.js';
+import { CATEGORY_COLORS, CATEGORY_BADGE_NAMES, CATEGORY_ICONS } from './js/categories-data.js';
+import { ALL_SERVERS } from './js/servers-data.js';
+import { BADGES_CONFIG, RARITY_LABELS, ROLE_LABELS } from './js/badges-data.js';
 
-const CATEGORY_COLORS = {
-    cars: '#ff6b6b', houses: '#4ecdc4', garages: '#45b7d1',
-    business: '#f9ca24', accessories: '#a55eea', skins: '#26de81', other: '#778ca3'
-};
-const CATEGORY_NAMES = {
-    cars: 'Транспорт', houses: 'Дом', garages: 'Гараж',
-    business: 'Бизнес', accessories: 'Аксессуар', skins: 'Скин', other: 'Разное'
-};
-const ROLE_LABELS = {
-    owner: { text: 'Владелец', cls: 'owner' },
-    admin: { text: 'Администратор', cls: 'admin' },
-    moder: { text: 'Модератор', cls: 'moder' }
-};
-const SERVER_COLORS = {
-    RED:'#ff2b2b', GREEN:'#2bff4a', BLUE:'#2b6bff', YELLOW:'#ffe600',
-    ORANGE:'#ff8c1a', PURPLE:'#a64dff', LIME:'#9dff00', PINK:'#ff4fd8',
-    CHERRY:'#b3003b', BLACK:'#888', INDIGO:'#4b0082', WHITE:'#ddd',
-    MAGENTA:'#ff00ff', CRIMSON:'#dc143c', GOLD:'#ffd700', AZURE:'#007fff',
-    PLATINUM:'#e5e4e2', AQUA:'#00ffff', GRAY:'#808080', ICE:'#b3f0ff',
-    CHILLI:'#ff3c00', CHOCO:'#5a2d0c', MOSCOW:'#c70000', SPB:'#005eff'
-};
-
-const BADGES_CONFIG = {
-    zbt_member:    { icon: '🔥', label: 'Участник ЗБТ',        desc: 'Принял участие в закрытом бета-тестировании Black Market', rarity: 'rare',      color: '#ff6b35' },
-    first_100:     { icon: '⚡', label: 'Первые 100',           desc: 'Вошёл в первые 100 пользователей платформы',              rarity: 'legendary', color: '#ffd700' },
-    founder:       { icon: '👑', label: 'Основатель',           desc: 'Один из основателей сообщества Black Market',             rarity: 'legendary', color: '#ffd700' },
-    administrator: { icon: '🛡️', label: 'Администратор',        desc: 'Администратор проекта Black Market',                      rarity: 'special',   color: '#e05fff' },
-    moderator:     { icon: '🔨', label: 'Модератор',            desc: 'Модератор платформы Black Market',                        rarity: 'special',   color: '#5b9dff' },
-    veteran:       { icon: '⭐', label: 'Ветеран Black Market',  desc: 'Долгожитель платформы',                                   rarity: 'rare',      color: '#a8e063' },
-    verified:      { icon: '🛡️', label: 'Проверенный продавец', desc: 'Подтверждённый надёжный продавец',                        rarity: 'uncommon',  color: '#4ecdc4' },
-    trusted:       { icon: '💎', label: 'Надёжный продавец',    desc: 'Высокий рейтинг и много положительных отзывов',           rarity: 'rare',      color: '#74b9ff' },
-    top_seller:    { icon: '🏆', label: 'Топ продавец месяца',  desc: 'Лучший продавец по итогам месяца',                        rarity: 'legendary', color: '#ffd700' },
-    bug_hunter:    { icon: '🐞', label: 'Охотник за багами',    desc: 'Нашёл и сообщил о важном баге',                           rarity: 'uncommon',  color: '#ff7675' },
-    active_tester: { icon: '🏅', label: 'Активный тестер',      desc: 'Активно участвовал в тестировании платформы',             rarity: 'uncommon',  color: '#fdcb6e' },
-    zbt_legend:    { icon: '🏆', label: 'Легенда ЗБТ',          desc: 'Внёс выдающийся вклад в развитие проекта во время ЗБТ',  rarity: 'legendary', color: '#ffd700' },
-    early_bird:    { icon: '🚀', label: 'Ранний сторонник',     desc: 'Поддержал проект на самом раннем этапе',                  rarity: 'rare',      color: '#a29bfe' },
-};
-const RARITY_LABELS = {
-    uncommon:  { label: 'Необычный',   color: '#4ecdc4' },
-    rare:      { label: 'Редкий',      color: '#74b9ff' },
-    legendary: { label: 'Легендарный', color: '#ffd700' },
-    special:   { label: 'Особый',      color: '#e05fff' },
-};
+// Цвета серверов и конфиг бейджей/ролей теперь общие с шапкой профиля на
+// главной (js/modules/sidebar.js) — раньше здесь были захардкожены заново
+// свои копии, и список серверов оказался неполным (только 24 из ~90):
+// для остальных серверов бейдж на этой странице показывался серым вместо
+// цвета сервера.
+const SERVER_COLORS = Object.fromEntries(ALL_SERVERS.map(s => [s.name, s.color]));
 
 function renderUserBadges(badges, size = 'md') {
     if (!badges || badges.length === 0) return '';
@@ -571,6 +607,7 @@ function renderHero(userData, reviews, role) {
         window._profileBadges = [];
     }
     badgesEl.innerHTML = badgesHtml;
+    if (window.lucide) lucide.createIcons();
 
     // Рейтинг
     const ratingEl = document.getElementById('heroRating');
@@ -599,13 +636,13 @@ function renderHero(userData, reviews, role) {
     if (currentUser && currentUser.nickname !== nickname) {
         actionsEl.innerHTML = `
             <button class="profile-write-btn" onclick="startChatWithUser()">
-                💬 Написать
+                <i data-lucide="message-circle" width="14" height="14"></i> Написать
             </button>
         `;
     } else if (currentUser && currentUser.nickname === nickname) {
         actionsEl.innerHTML = `
             <button class="profile-edit-btn" onclick="openEditProfile()">
-                ✏️ Редактировать профиль
+                <i data-lucide="pencil" width="14" height="14"></i> Редактировать профиль
             </button>
         `;
     }
@@ -629,7 +666,7 @@ function renderAds(ads) {
     if (ads.length === 0) {
         el.innerHTML = `
             <div class="profile-empty">
-                <div class="profile-empty-icon">📋</div>
+                <div class="profile-empty-icon"><i data-lucide="clipboard-list" width="40" height="40"></i></div>
                 <div class="profile-empty-text">Нет активных объявлений</div>
             </div>`;
         return;
@@ -637,7 +674,7 @@ function renderAds(ads) {
 
     el.innerHTML = ads.map(ad => {
         const color = CATEGORY_COLORS[ad.category] || '#888';
-        const catName = CATEGORY_NAMES[ad.category] || ad.category;
+        const catName = CATEGORY_BADGE_NAMES[ad.category] || ad.category;
         const thumb = ad.photos?.[0]
             ? `<img src="${ad.photos[0]}" alt="">`
             : getCatEmoji(ad.category);
@@ -684,8 +721,8 @@ function renderReviews(reviews) {
 }
 
 function getCatEmoji(cat) {
-    const emojis = { cars:'🚗', houses:'🏠', garages:'🅿️', business:'🏢', accessories:'💎', skins:'👕', other:'📦' };
-    return emojis[cat] || '📋';
+    const icon = CATEGORY_ICONS[cat] || 'clipboard-list';
+    return `<i data-lucide="${icon}" width="13" height="13"></i>`;
 }
 
 // Открыть объявление — через sessionStorage чтобы не было редиректа туда-обратно
@@ -725,7 +762,7 @@ function renderAchievementsTab() {
     if (badges.length === 0) {
         el.innerHTML = `
             <div style="text-align:center;padding:40px 20px;color:#555;">
-                <div style="font-size:40px;margin-bottom:12px;">🏅</div>
+                <div style="margin-bottom:12px;"><i data-lucide="medal" width="40" height="40"></i></div>
                 <div style="font-size:15px;">Достижений пока нет</div>
                 <div style="font-size:13px;margin-top:6px;color:#444;">Участвуй в ЗБТ и помогай проекту!</div>
             </div>`;
@@ -734,10 +771,10 @@ function renderAchievementsTab() {
 
     // Группируем по редкости
     const groups = [
-        { rarity: 'legendary', label: '🏆 Легендарные' },
-        { rarity: 'special',   label: '✨ Особые' },
-        { rarity: 'rare',      label: '💎 Редкие' },
-        { rarity: 'uncommon',  label: '🔹 Необычные' },
+        { rarity: 'legendary', label: '<i data-lucide="trophy" width="14" height="14"></i> Легендарные' },
+        { rarity: 'special',   label: '<i data-lucide="sparkles" width="14" height="14"></i> Особые' },
+        { rarity: 'rare',      label: '<i data-lucide="gem" width="14" height="14"></i> Редкие' },
+        { rarity: 'uncommon',  label: '<i data-lucide="diamond" width="14" height="14"></i> Необычные' },
     ];
 
     let html = `<div style="padding:4px 0;">`;
@@ -777,13 +814,14 @@ function renderAchievementsTab() {
     html += `<div style="color:#333;font-size:12px;text-align:center;padding:8px 0 4px;">${badges.length} из ${allKeys.length} достижений</div>`;
     html += `</div>`;
     el.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
 }
 
 // ══════════════════════════════════════════
 // РЕДАКТИРОВАНИЕ ПРОФИЛЯ
 // ══════════════════════════════════════════
-import { getUsers, saveUsers } from './api.js';
-import { compressImage } from './utils.js';
+import { updateUser } from './js/api.js';
+import { compressImage } from './js/utils.js';
 
 let editAvatarData = null;
 
@@ -792,9 +830,6 @@ window.openEditProfile = function() {
     if (!user) return;
     document.getElementById('editNicknameField').value = user.nickname || '';
     document.getElementById('editTelegramField').value = user.telegram || '';
-    document.getElementById('editPasswordField').value = '';
-    document.getElementById('editConfirmField').value = '';
-    document.getElementById('editConfirmGroup').style.display = 'none';
     editAvatarData = null;
     const preview = document.getElementById('editAvatarPreview');
     const avatar = user.avatar || localStorage.getItem('avatar_' + user.nickname);
@@ -817,11 +852,12 @@ document.getElementById('editProfileOverlay').addEventListener('click', function
 });
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeEditProfile();
-});
-
-document.getElementById('editPasswordField').addEventListener('input', function() {
-    document.getElementById('editConfirmGroup').style.display = this.value ? 'block' : 'none';
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('changePasswordOverlay').style.display === 'flex') {
+        closeChangePassword();
+    } else {
+        closeEditProfile();
+    }
 });
 
 document.getElementById('editAvatarInput').addEventListener('change', async function(e) {
@@ -837,27 +873,26 @@ document.getElementById('editAvatarInput').addEventListener('change', async func
     reader.readAsDataURL(file);
 });
 
+function showMiniToast(text, icon) {
+    const toast = document.createElement('div');
+    toast.innerHTML = `<i data-lucide="${icon || 'check'}" width="14" height="14"></i> ${text}`;
+    toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #4caf5040;border-left:3px solid #4caf50;color:white;padding:14px 20px;border-radius:12px;z-index:99999;font-size:14px;font-weight:500;';
+    document.body.appendChild(toast);
+    if (window.lucide) lucide.createIcons();
+    setTimeout(() => toast.remove(), 2500);
+}
+
 window.saveEditProfile = async function() {
     const btn = document.getElementById('editSaveBtn');
     const telegram = document.getElementById('editTelegramField').value.trim();
-    const newPassword = document.getElementById('editPasswordField').value;
-    const confirmPassword = document.getElementById('editConfirmField').value;
-    if (newPassword && newPassword !== confirmPassword) { alert('Пароли не совпадают'); return; }
-    if (newPassword && newPassword.length < 6) { alert('Пароль минимум 6 символов'); return; }
     btn.disabled = true; btn.textContent = 'Сохранение...';
     try {
         const user = JSON.parse(localStorage.getItem('currentUser'));
-        if (newPassword) {
-            const { updatePassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-            await updatePassword(auth.currentUser, newPassword);
-        }
-        const users = await getUsers();
-        const idx = users.findIndex(u => u.nickname?.toLowerCase() === user.nickname?.toLowerCase());
-        if (idx !== -1) {
-            users[idx].telegram = telegram;
-            if (editAvatarData) users[idx].avatar = editAvatarData;
-            await saveUsers(users);
-        }
+        // users/{nickname} — точечное обновление своего документа, без
+        // чтения и перезаписи всех пользователей разом (см. api.js).
+        const updates = { telegram };
+        if (editAvatarData) updates.avatar = editAvatarData;
+        await updateUser(user.nickname, updates);
         const updated = { ...user, telegram };
         if (editAvatarData) {
             updated.avatar = editAvatarData;
@@ -869,16 +904,117 @@ window.saveEditProfile = async function() {
             if (heroAvatar) heroAvatar.innerHTML = '<img src="' + editAvatarData + '" alt="avatar">';
         }
         closeEditProfile();
-        const toast = document.createElement('div');
-        toast.textContent = '✓ Профиль обновлён';
-        toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #4caf5040;border-left:3px solid #4caf50;color:white;padding:14px 20px;border-radius:12px;z-index:99999;font-size:14px;font-weight:500;';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2500);
+        showMiniToast('Профиль обновлён');
     } catch (e) {
         console.error('Ошибка сохранения:', e);
         alert('Ошибка: ' + (e.message || 'Попробуй снова'));
     } finally {
         btn.disabled = false; btn.textContent = 'Сохранить изменения';
+    }
+};
+
+// ══════════════════════════════════════════
+// СМЕНА ПАРОЛЯ — отдельное окошко, 2 шага со слайдом.
+// Шаг 1 сразу проверяет текущий пароль через переаутентификацию
+// (а не только в конце) — если он неверный, человек узнаёт об этом
+// сразу, не заполняя новый пароль вслепую. Шаг 2 открывается только
+// после успешной проверки.
+// ══════════════════════════════════════════
+
+function nicknameToEmail(nickname) {
+    return `${nickname.toLowerCase()}@blackmarket.game`;
+}
+
+window.openChangePassword = function() {
+    document.getElementById('pwCurrentInput').value = '';
+    document.getElementById('pwNewInput').value = '';
+    document.getElementById('pwConfirmInput').value = '';
+    document.getElementById('pwError1').textContent = '';
+    document.getElementById('pwError2').textContent = '';
+    document.getElementById('pwSliderTrack').style.transform = 'translateX(0)';
+    document.getElementById('changePasswordOverlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('pwCurrentInput').focus(), 350);
+};
+
+window.closeChangePassword = function() {
+    document.getElementById('changePasswordOverlay').style.display = 'none';
+    document.body.style.overflow = document.getElementById('editProfileOverlay').style.display === 'flex' ? 'hidden' : '';
+};
+
+document.getElementById('changePasswordOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeChangePassword();
+});
+
+window.pwGoBack = function() {
+    document.getElementById('pwError1').textContent = '';
+    document.getElementById('pwSliderTrack').style.transform = 'translateX(0)';
+    setTimeout(() => document.getElementById('pwCurrentInput').focus(), 350);
+};
+
+window.confirmCurrentPassword = async function() {
+    const btn = document.getElementById('pwStep1Btn');
+    const errorEl = document.getElementById('pwError1');
+    errorEl.textContent = '';
+    const currentPassword = document.getElementById('pwCurrentInput').value;
+    if (!currentPassword) { errorEl.textContent = 'Введи текущий пароль'; return; }
+
+    btn.disabled = true; btn.textContent = 'Проверка...';
+    try {
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        const { EmailAuthProvider, reauthenticateWithCredential } =
+            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const cred = EmailAuthProvider.credential(nicknameToEmail(user.nickname), currentPassword);
+        await reauthenticateWithCredential(auth.currentUser, cred);
+
+        // Успех — плавно едем на шаг 2
+        document.getElementById('pwSliderTrack').style.transform = 'translateX(-50%)';
+        setTimeout(() => document.getElementById('pwNewInput').focus(), 350);
+    } catch (e) {
+        console.error('Ошибка переаутентификации:', e.code);
+        if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            errorEl.textContent = 'Неверный текущий пароль';
+        } else if (e.code === 'auth/too-many-requests') {
+            errorEl.textContent = 'Слишком много попыток. Подожди немного';
+        } else {
+            errorEl.textContent = 'Ошибка проверки пароля';
+        }
+    } finally {
+        btn.disabled = false; btn.textContent = 'Далее';
+    }
+};
+
+window.submitNewPassword = async function() {
+    const btn = document.getElementById('pwStep2Btn');
+    const errorEl = document.getElementById('pwError2');
+    errorEl.textContent = '';
+    const newPassword = document.getElementById('pwNewInput').value;
+    const confirmPassword = document.getElementById('pwConfirmInput').value;
+
+    if (newPassword.length < 6) { errorEl.textContent = 'Пароль минимум 6 символов'; return; }
+    if (newPassword !== confirmPassword) { errorEl.textContent = 'Пароли не совпадают'; return; }
+
+    btn.disabled = true; btn.textContent = 'Сохранение...';
+    try {
+        const { updatePassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        await updatePassword(auth.currentUser, newPassword);
+        closeChangePassword();
+        showMiniToast('Пароль изменён', 'key-round');
+    } catch (e) {
+        console.error('Ошибка смены пароля:', e.code);
+        if (e.code === 'auth/requires-recent-login') {
+            // Переаутентификация на шаге 1 "протухла" (маловероятно, но
+            // возможно, если человек надолго завис на шаге 2) — вежливо
+            // возвращаем на шаг 1 вместо непонятной ошибки.
+            errorEl.textContent = 'Сессия устарела, подтверди пароль ещё раз';
+            setTimeout(() => { document.getElementById('pwSliderTrack').style.transform = 'translateX(0)'; }, 900);
+        } else if (e.code === 'auth/weak-password') {
+            errorEl.textContent = 'Пароль слишком простой';
+        } else {
+            errorEl.textContent = 'Ошибка сохранения пароля';
+        }
+    } finally {
+        btn.disabled = false; btn.textContent = 'Сохранить пароль';
     }
 };
 </script>

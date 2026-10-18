@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Market — торговая площадка Black Russia</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="stylesheet" href="css/base.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+
+html { scroll-behavior: smooth; }
+
+.landing { overflow-x: hidden; }
+
+/* ===== HEADER ===== */
+.l-header {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px;
+    background: rgba(11,11,11,0.75);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.l-logo { font-size: 20px; letter-spacing: 0.08em; }
+.l-header .btn { padding: 10px 20px; font-size: 14px; }
+
+/* ===== HERO ===== */
+.l-hero {
+    position: relative;
+    padding: 64px 24px 56px;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    isolation: isolate;
+}
+.l-hero::before {
+    content:""; position:absolute; inset:0; z-index:-1;
+    background:
+        radial-gradient(ellipse 60% 45% at 50% 0%, rgba(255,30,30,0.16), transparent 70%),
+        radial-gradient(ellipse 40% 30% at 85% 15%, rgba(255,30,30,0.08), transparent 70%);
+}
+
+.l-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #ff6b6b;
+    background: rgba(255,30,30,0.1); border: 1px solid rgba(255,30,30,0.25);
+    padding: 7px 14px; border-radius: 100px;
+    margin-bottom: 22px;
+}
+.l-title {
+    font-size: 40px; font-weight: 900; letter-spacing: -0.01em; line-height: 1.15;
+    text-transform: uppercase;
+    max-width: 680px; margin-bottom: 18px;
+}
+.accent {
+    background: linear-gradient(135deg, #ff4d4d, #ff1e1e 60%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.l-subtitle {
+    font-size: 16px; color: #999; max-width: 480px; line-height: 1.65; margin-bottom: 32px;
+}
+.l-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 56px; }
+.l-hero-actions .btn-secondary { background: rgba(255,255,255,0.04); }
+
+/* ===== PHONE MOCKUP (стилизованная имитация ленты, не реальный скрин) ===== */
+.l-phone-wrap { display: flex; justify-content: center; perspective: 1400px; }
+.l-phone {
+    width: 300px; border-radius: 34px;
+    background: #0e0e0e; border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03), 0 0 60px rgba(255,30,30,0.08);
+    padding: 10px; transform: rotateX(4deg);
+}
+.l-phone-screen {
+    background: #0b0b0b; border-radius: 26px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);
+}
+.l-phone-topbar { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px 10px; }
+.l-phone-topbar .l-logo { font-size: 13px; }
+.l-mock-card {
+    margin: 0 10px 10px; padding: 12px;
+    background: rgba(17,17,17,0.95); border: 1px solid rgba(255,30,30,0.15); border-radius: 14px;
+    display: flex; gap: 10px; align-items: center;
+}
+.l-mock-thumb {
+    width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(255,30,30,0.35), rgba(60,10,10,0.6));
+}
+.l-mock-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.l-mock-line { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); }
+.l-mock-price { height: 9px; width: 46%; border-radius: 4px; background: rgba(255,30,30,0.5); }
+
+/* ===== SECTIONS ===== */
+.l-section { padding: 64px 24px; max-width: 1080px; margin: 0 auto; scroll-margin-top: 76px; }
+.l-section-head { text-align: center; max-width: 480px; margin: 0 auto 40px; }
+.l-section-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #ff6b6b; margin-bottom: 10px; }
+.l-section-title { font-size: 26px; font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase; }
+
+/* Features grid */
+.l-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.l-feature {
+    background: rgba(17,17,17,0.9); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px;
+    padding: 22px; transition: border-color .2s, transform .2s, background .2s;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+.l-feature:hover,
+.l-feature:active {
+    border-color: rgba(255,30,30,0.35);
+    transform: translateY(-3px);
+    background: rgba(22,17,17,0.95);
+}
+.l-feature:active { transform: translateY(-1px) scale(0.98); }
+.l-feature-hint {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 12px; font-size: 12px; font-weight: 600; color: #ff6b6b;
+}
+.l-feature-icon {
+    width: 40px; height: 40px; border-radius: 11px; margin-bottom: 14px;
+    background: rgba(255,30,30,0.12); color: #ff6b6b;
+    display: flex; align-items: center; justify-content: center;
+}
+.l-feature h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; }
+.l-feature p { font-size: 13.5px; color: #888; line-height: 1.55; }
+
+/* Steps */
+.l-steps { display: flex; flex-direction: column; gap: 0; }
+.l-step {
+    display: flex; gap: 18px; padding: 20px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.l-step:last-child { border-bottom: none; }
+.l-step-num {
+    font-size: 13px; font-weight: 800; color: #ff1e1e;
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid rgba(255,30,30,0.4);
+    display: flex; align-items: center; justify-content: center;
+}
+.l-step h4 { font-size: 15.5px; font-weight: 700; margin-bottom: 4px; }
+.l-step p { font-size: 13.5px; color: #888; line-height: 1.5; }
+
+/* Final CTA */
+.l-final {
+    position: relative;
+    text-align: center; padding: 64px 24px 72px; margin: 0 24px 24px;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(255,30,30,0.25);
+    background-image:
+        linear-gradient(180deg, rgba(11,11,11,0.35), rgba(11,11,11,0.75) 70%),
+        url('bm-glow.webp');
+    background-size: cover;
+    background-position: center right;
+}
+.l-final > * { position: relative; z-index: 1; }
+.l-final h2 { font-size: 28px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; letter-spacing: -0.01em; }
+.l-final p { color: #888; margin-bottom: 26px; }
+
+/* Footer */
+.l-footer {
+    text-align: center; padding: 28px 24px 40px; color: #555; font-size: 12.5px;
+}
+.l-footer .l-logo { font-size: 15px; display:block; margin-bottom: 8px; }
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+    .l-title { font-size: 30px; }
+    .l-features { grid-template-columns: 1fr 1fr; }
+    .l-section { padding: 48px 18px; }
+}
+@media (max-width: 480px) {
+    .l-header { padding: 14px 16px; }
+    .l-hero { padding: 44px 16px 40px; }
+    .l-title { font-size: 26px; }
+    .l-subtitle { font-size: 14.5px; }
+    .l-features { grid-template-columns: 1fr; }
+    .l-phone { width: 240px; }
+    .l-final { margin: 0 12px 12px; padding: 44px 20px 52px; }
+    .l-final h2 { font-size: 22px; }
+}
+
+/* ===== МОДАЛКА ПРЕВЬЮ ФИЧИ ===== */
+.lf-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease;
+}
+.lf-overlay.active { opacity: 1; pointer-events: auto; }
+.lf-modal {
+    background: #111; border: 1px solid rgba(255,30,30,0.25);
+    border-radius: 20px; padding: 28px;
+    width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto;
+    transform: scale(0.94) translateY(8px);
+    transition: transform .25s ease;
+}
+.lf-overlay.active .lf-modal { transform: scale(1) translateY(0); }
+.lf-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.lf-modal-head h3 { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.lf-modal-head p { font-size: 13px; color: #888; margin-top: 4px; line-height: 1.5; }
+.lf-close {
+    background: rgba(255,255,255,0.06); border: none; color: #999;
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.lf-close:hover { background: rgba(255,255,255,0.12); color: white; }
+
+/* ---- мини-мокап: категории ---- */
+.lf-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lf-cat-tile {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: #ccc; font-size: 12.5px; font-weight: 600; text-align: center;
+}
+.lf-cat-tile i { color: #ff6b6b; }
+
+/* ---- мини-мокап: чат ---- */
+.lf-chat { display: flex; flex-direction: column; gap: 8px; }
+.lf-bubble { max-width: 78%; padding: 10px 13px; border-radius: 14px; font-size: 13px; line-height: 1.4; }
+.lf-bubble.them { align-self: flex-start; background: rgba(255,255,255,0.08); color: #ddd; border-bottom-left-radius: 4px; }
+.lf-bubble.me { align-self: flex-end; background: linear-gradient(135deg,#ff1e1e,#cc0000); color: white; border-bottom-right-radius: 4px; }
+.lf-chat-input {
+    margin-top: 4px; display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+    padding: 9px 12px; color: #666; font-size: 12.5px;
+}
+.lf-chat-input i { color: #ff6b6b; margin-left: auto; }
+
+/* ---- мини-мокап: отзывы ---- */
+.lf-review-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; }
+.lf-review-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.lf-review-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#ff1e1e,#cc0000); flex-shrink: 0; }
+.lf-review-name { font-size: 13.5px; font-weight: 700; color: white; }
+.lf-review-stars { color: #ffd24d; font-size: 12px; margin-top: 2px; }
+.lf-review-text { font-size: 12.5px; color: #999; line-height: 1.55; }
+
+/* ---- мини-мокап: модерация ---- */
+.lf-report-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+.lf-report-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.lf-report-badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
+.lf-report-badge.new { background: rgba(255,30,30,0.15); color: #ff6b6b; }
+.lf-report-badge.resolved { background: rgba(76,175,80,0.15); color: #66bb6a; }
+.lf-report-reason { font-size: 12.5px; color: #999; display: flex; align-items: center; gap: 6px; }
+.lf-report-reason i { color: #ff6b6b; }
+
+/* ---- мини-мокап: статистика ---- */
+.lf-chart { display: flex; align-items: flex-end; gap: 8px; height: 90px; margin-bottom: 14px; }
+.lf-bar { flex: 1; background: linear-gradient(180deg,#ff4d4d,#ff1e1e); border-radius: 4px 4px 0 0; opacity: 0.85; }
+.lf-stat-row { display: flex; gap: 18px; }
+.lf-stat-row div { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #999; }
+.lf-stat-row i { color: #ff6b6b; }
+
+/* ---- мини-мокап: сервера ---- */
+.lf-server-list { display: flex; flex-direction: column; gap: 8px; }
+.lf-server-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px;
+    font-size: 13px; color: #ccc; font-weight: 600;
+}
+.lf-server-row.active { border-color: rgba(255,30,30,0.4); background: rgba(255,30,30,0.08); color: white; }
+.lf-server-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.lf-server-row.active i { margin-left: auto; color: #ff6b6b; }
+</style>
+</head>
+<body class="landing">
+
+<header class="l-header">
+    <div class="l-logo"><span class="logo-black">BLACK</span> <span class="logo-market">MARKET</span></div>
+    <a href="register.html" class="btn btn-primary">Войти</a>
+</header>
+
+<section class="l-hero">
+    <span class="l-eyebrow"><i data-lucide="zap" width="13" height="13"></i> Торговая площадка Black Russia</span>
+    <h1 class="l-title">Твой рынок <span class="accent">BLACK</span>&nbsp;RUSSIA вне сервера</h1>
+    <p class="l-subtitle">Публикуй объявления, находи покупателей и продавцов, договаривайся напрямую в личных сообщениях — без репостов на форумах и разводов через посредников.</p>
+    <div class="l-hero-actions">
+        <a href="register.html" class="btn btn-primary btn-lg">Создать аккаунт</a>
+        <a href="#how" class="btn btn-secondary btn-lg">Как это работает</a>
+    </div>
+
+    <div class="l-phone-wrap">
+        <div class="l-phone">
+            <div class="l-phone-screen">
+                <div class="l-phone-topbar">
+                    <span class="l-logo"><span class="logo-black">BLACK</span> <span class="logo-market">MARKET</span></span>
+                    <i data-lucide="bell" width="15" height="15" style="color:#666;"></i>
+                </div>
+                <div class="l-mock-card">
+                    <div class="l-mock-thumb"></div>
+                    <div class="l-mock-lines">
+                        <div class="l-mock-line" style="width:80%;"></div>
+                        <div class="l-mock-line" style="width:55%;"></div>
+                        <div class="l-mock-price"></div>
+                    </div>
+                </div>
+                <div class="l-mock-card">
+                    <div class="l-mock-thumb" style="background:linear-gradient(135deg, rgba(80,80,255,0.3), rgba(10,10,60,0.6));"></div>
+                    <div class="l-mock-lines">
+                        <div class="l-mock-line" style="width:70%;"></div>
+                        <div class="l-mock-line" style="width:40%;"></div>
+                        <div class="l-mock-price"></div>
+                    </div>
+                </div>
+                <div class="l-mock-card">
+                    <div class="l-mock-thumb" style="background:linear-gradient(135deg, rgba(255,180,30,0.3), rgba(60,40,10,0.6));"></div>
+                    <div class="l-mock-lines">
+                        <div class="l-mock-line" style="width:60%;"></div>
+                        <div class="l-mock-line" style="width:50%;"></div>
+                        <div class="l-mock-price"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="l-section" id="features">
+    <div class="l-section-head">
+        <div class="l-section-eyebrow">Возможности</div>
+        <h2 class="l-section-title">Всё для сделки <span class="accent">в&nbsp;одном месте</span></h2>
+    </div>
+    <div class="l-features">
+        <div class="l-feature" onclick="openFeaturePreview('categories')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeaturePreview('categories');}">
+            <div class="l-feature-icon"><i data-lucide="layout-grid" width="19" height="19"></i></div>
+            <h3>Объявления по категориям</h3>
+            <p>Машины, недвижимость, бизнесы и другое имущество — с фото и характеристиками под каждую категорию.</p>
+            <span class="l-feature-hint"><i data-lucide="eye" width="12" height="12"></i> Посмотреть</span>
+        </div>
+        <div class="l-feature" onclick="openFeaturePreview('messages')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeaturePreview('messages');}">
+            <div class="l-feature-icon"><i data-lucide="message-circle" width="19" height="19"></i></div>
+            <h3>Личные сообщения</h3>
+            <p>Договаривайся напрямую с продавцом внутри платформы, без сторонних чатов.</p>
+            <span class="l-feature-hint"><i data-lucide="eye" width="12" height="12"></i> Посмотреть</span>
+        </div>
+        <div class="l-feature" onclick="openFeaturePreview('reviews')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeaturePreview('reviews');}">
+            <div class="l-feature-icon"><i data-lucide="star" width="19" height="19"></i></div>
+            <h3>Рейтинг и отзывы</h3>
+            <p>Смотри историю и отзывы продавца до того, как договориться о сделке.</p>
+            <span class="l-feature-hint"><i data-lucide="eye" width="12" height="12"></i> Посмотреть</span>
+        </div>
+        <div class="l-feature" onclick="openFeaturePreview('moderation')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeaturePreview('moderation');}">
+            <div class="l-feature-icon"><i data-lucide="shield" width="19" height="19"></i></div>
+            <h3>Жалобы и модерация</h3>
+            <p>Команда модераторов разбирает жалобы и блокирует нарушителей.</p>
+            <span class="l-feature-hint"><i data-lucide="eye" width="12" height="12"></i> Посмотреть</span>
+        </div>
+        <div class="l-feature" onclick="openFeaturePreview('stats')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeaturePreview('stats');}">
+            <div class="l-feature-icon"><i data-lucide="bar-chart-3" width="19" height="19"></i></div>
+            <h3>Статистика объявлений</h3>
+            <p>Отслеживай просмотры и интерес к своим объявлениям.</p>
+            <span class="l-feature-hint"><i data-lucide="eye" width="12" height="12"></i> Посмотреть</span>
+        </div>
+        <div class="l-feature" onclick="openFeaturePreview('servers')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeaturePreview('servers');}">
+            <div class="l-feature-icon"><i data-lucide="server" width="19" height="19"></i></div>
+            <h3>Свой сервер</h3>
+            <p>Выбери сервер, на котором играешь — видишь только актуальные объявления с него.</p>
+            <span class="l-feature-hint"><i data-lucide="eye" width="12" height="12"></i> Посмотреть</span>
+        </div>
+    </div>
+</section>
+
+<section class="l-section" id="how">
+    <div class="l-section-head">
+        <div class="l-section-eyebrow">Как это работает</div>
+        <h2 class="l-section-title"><span class="accent">4&nbsp;шага</span> до сделки</h2>
+    </div>
+    <div class="l-steps">
+        <div class="l-step">
+            <div class="l-step-num">1</div>
+            <div><h4>Зарегистрируйся под игровым ником</h4><p>Никнейм и пароль — без лишних полей.</p></div>
+        </div>
+        <div class="l-step">
+            <div class="l-step-num">2</div>
+            <div><h4>Выбери сервер Black Russia</h4><p>Видишь объявления только со своего сервера.</p></div>
+        </div>
+        <div class="l-step">
+            <div class="l-step-num">3</div>
+            <div><h4>Опубликуй объявление или найди нужное</h4><p>Категории, фильтры и поиск — находишь быстро.</p></div>
+        </div>
+        <div class="l-step">
+            <div class="l-step-num">4</div>
+            <div><h4>Договорись в чате и заключи сделку</h4><p>Напрямую с продавцом, без посредников.</p></div>
+        </div>
+    </div>
+</section>
+
+<section class="l-final">
+    <h2>Начни торговать <span class="accent">по&nbsp;чёрному</span>&nbsp;<span style="color:#a855f7;">😈</span></h2>
+    <p>Регистрация занимает меньше минуты.</p>
+    <a href="register.html" class="btn btn-primary btn-lg">Создать аккаунт</a>
+</section>
+
+<footer class="l-footer">
+    <span class="l-logo"><span class="logo-black">BLACK</span> <span class="logo-market">MARKET</span></span>
+    Неофициальная торговая площадка для игроков Black Russia
+</footer>
+
+<div class="lf-overlay" id="lfOverlay" onclick="if(event.target===this)closeFeaturePreview()">
+    <div class="lf-modal">
+        <div class="lf-modal-head">
+            <div>
+                <h3 id="lfTitle"></h3>
+                <p id="lfDesc"></p>
+            </div>
+            <button class="lf-close" onclick="closeFeaturePreview()"><i data-lucide="x" width="16" height="16"></i></button>
+        </div>
+        <div id="lfBody"></div>
+    </div>
+</div>
+
+<script>document.addEventListener("DOMContentLoaded", () => { if (window.lucide) lucide.createIcons(); });</script>
+<script>document.body.addEventListener('touchstart', function(){}, false);</script>
+
+<script>
+const featurePreviews = {
+    categories: {
+        title: 'Объявления по категориям',
+        desc: 'Каждая категория — со своими полями и характеристиками.',
+        body: `<div class="lf-cat-grid">
+            <div class="lf-cat-tile"><i data-lucide="car" width="22" height="22"></i>Машины</div>
+            <div class="lf-cat-tile"><i data-lucide="home" width="22" height="22"></i>Недвижимость</div>
+            <div class="lf-cat-tile"><i data-lucide="briefcase" width="22" height="22"></i>Бизнесы</div>
+            <div class="lf-cat-tile"><i data-lucide="package" width="22" height="22"></i>Другое</div>
+        </div>`
+    },
+    messages: {
+        title: 'Личные сообщения',
+        desc: 'Переписка с продавцом — прямо на платформе.',
+        body: `<div class="lf-chat">
+            <div class="lf-bubble them">Здравствуйте, актуально?</div>
+            <div class="lf-bubble me">Да, торг уместен</div>
+            <div class="lf-bubble them">Готов встретиться сегодня</div>
+            <div class="lf-chat-input">Напишите сообщение... <i data-lucide="send" width="15" height="15"></i></div>
+        </div>`
+    },
+    reviews: {
+        title: 'Рейтинг и отзывы',
+        desc: 'Смотри репутацию продавца до сделки.',
+        body: `<div class="lf-review-card">
+            <div class="lf-review-top">
+                <div class="lf-review-avatar"></div>
+                <div>
+                    <div class="lf-review-name">Продавец</div>
+                    <div class="lf-review-stars">★★★★★</div>
+                </div>
+            </div>
+            <div class="lf-review-text">«Всё как договаривались, сделка прошла быстро и без проблем»</div>
+        </div>`
+    },
+    moderation: {
+        title: 'Жалобы и модерация',
+        desc: 'Модераторы реагируют на жалобы и наказывают нарушителей.',
+        body: `<div class="lf-report-card">
+            <div class="lf-report-top">
+                <span class="lf-report-badge new">Новая</span>
+                <span style="color:#555;font-size:11px;">2 мин назад</span>
+            </div>
+            <div class="lf-report-reason"><i data-lucide="siren" width="13" height="13"></i> Мошенничество</div>
+        </div>
+        <div class="lf-report-card" style="margin-bottom:0;">
+            <div class="lf-report-top">
+                <span class="lf-report-badge resolved">Решена</span>
+                <span style="color:#555;font-size:11px;">вчера</span>
+            </div>
+            <div class="lf-report-reason"><i data-lucide="check-circle" width="13" height="13"></i> Уже продано</div>
+        </div>`
+    },
+    stats: {
+        title: 'Статистика объявлений',
+        desc: 'Просмотры и интерес в динамике по дням.',
+        body: `<div class="lf-chart">
+            <div class="lf-bar" style="height:35%;"></div>
+            <div class="lf-bar" style="height:55%;"></div>
+            <div class="lf-bar" style="height:40%;"></div>
+            <div class="lf-bar" style="height:80%;"></div>
+            <div class="lf-bar" style="height:60%;"></div>
+            <div class="lf-bar" style="height:95%;"></div>
+            <div class="lf-bar" style="height:70%;"></div>
+        </div>
+        <div class="lf-stat-row">
+            <div><i data-lucide="eye" width="14" height="14"></i> 248 просмотров</div>
+            <div><i data-lucide="heart" width="14" height="14"></i> 12 в избранном</div>
+        </div>`
+    },
+    servers: {
+        title: 'Свой сервер',
+        desc: 'Видишь объявления только со своего сервера Black Russia.',
+        body: `<div class="lf-server-list">
+            <div class="lf-server-row active"><span class="lf-server-dot" style="background:#ff2b2b;"></span> RED <i data-lucide="check" width="15" height="15"></i></div>
+            <div class="lf-server-row"><span class="lf-server-dot" style="background:#2b6bff;"></span> BLUE</div>
+            <div class="lf-server-row"><span class="lf-server-dot" style="background:#ffe600;"></span> YELLOW</div>
+        </div>`
+    }
+};
+
+function openFeaturePreview(key) {
+    const data = featurePreviews[key];
+    if (!data) return;
+    document.getElementById('lfTitle').textContent = data.title;
+    document.getElementById('lfDesc').textContent = data.desc;
+    document.getElementById('lfBody').innerHTML = data.body;
+    document.getElementById('lfOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeFeaturePreview() {
+    document.getElementById('lfOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeFeaturePreview();
+});
+</script>
+</body>
+</html>
