@@ -3,6 +3,8 @@ import { db, auth } from '../firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { showToast, compressImage } from '../utils.js';
 import { getAllAds, invalidateCache, checkBanStatus, saveBugReport } from '../api.js';
+import { syncCurrentUser } from '../auth.js';
+import '../scroll-lock.js'; // страница не крутится под открытыми окнами
 
 import { getFavorites, saveFavorites, updateFavCount, cleanupFavorites } from './favorites.js';
 import { updateMyAdsCount, showMyAds, showFavorites } from './my-ads.js';
@@ -121,6 +123,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Инициализация шторки профиля ──
     initSidebarHeader();
+
+    // Подтягиваем свежий профиль из Firestore (аватар, Telegram, бейджи…) и
+    // перерисовываем шапку. Раньше аватар и прочее брались только из
+    // localStorage — на другом устройстве/браузере, где человек уже был
+    // залогинен ДО изменения профиля, оставалась старая копия без аватара.
+    syncCurrentUser().then(fresh => {
+        if (fresh) { Object.assign(currentUser, fresh); initSidebarHeader(); }
+    }).catch(() => {});
 
     // Открываем объявление если пришли с profile.html
     if (window.location.hash === '#openAd') {

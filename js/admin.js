@@ -1,5 +1,6 @@
 // ===== ИМПОРТ FIREBASE =====
 import { db } from './firebase-config.js';
+import './scroll-lock.js'; // страница не крутится под открытыми окнами
 import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { CATEGORY_SIDEBAR_NAMES } from './categories-data.js';
 import { BADGES_CONFIG } from './badges-data.js';

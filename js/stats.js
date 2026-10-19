@@ -2,6 +2,7 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc, collection, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAllAds } from './api.js';
+import './scroll-lock.js'; // страница не крутится под открытыми окнами
 
 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 if (!currentUser) window.location.href = 'register.html';

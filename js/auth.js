@@ -3,7 +3,7 @@
 
 import { auth } from './firebase-config.js';
 import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getUserRole, checkBanStatus } from './api.js';
+import { getUserRole, checkBanStatus, findUser } from './api.js';
 import { showToast } from './utils.js';
 
 // ─────────────────────────────────────────────
@@ -23,6 +23,40 @@ export function saveCurrentUser(user) {
     const safe = { ...user };
     delete safe.password; // никогда не храним пароль в localStorage
     localStorage.setItem('currentUser', JSON.stringify(safe));
+}
+
+// Подтянуть свежий профиль из Firestore (users/{ник}) в локальную копию.
+// localStorage на каждом устройстве/в каждом браузере свой — если профиль
+// менялся на другом устройстве (аватар, Telegram, бейджи от админа…) или
+// человек уже был залогинен ДО этого изменения, локальная копия остаётся
+// старой, пока не перелогиниться. Вызывать при загрузке страницы.
+//
+// Правила слияния: поля из Firestore обновляют локальные, КРОМЕ:
+//  • nickname — остаётся локальный (регистр/логин не трогаем);
+//  • server — берём из Firestore только если локально его нет: выбор
+//    сервера на этом устройстве важнее, чем возможно устаревшая запись;
+//  • поля, которых в Firestore нет (например, аватар не успел сохраниться) —
+//    локальное значение остаётся как есть.
+export async function syncCurrentUser() {
+    const local = getCurrentUser();
+    if (!local?.nickname) return null;
+    try {
+        const remote = await findUser(local.nickname);
+        if (!remote) return local;
+        const merged = { ...local };
+        for (const [key, value] of Object.entries(remote)) {
+            if (key === 'password' || key === 'nickname') continue;
+            if (key === 'server' && local.server) continue;
+            merged[key] = value;
+        }
+        saveCurrentUser(merged);
+        // совместимость: шторка читает аватар и из отдельного ключа
+        if (merged.avatar) localStorage.setItem(`avatar_${merged.nickname}`, merged.avatar);
+        return merged;
+    } catch (e) {
+        console.warn('syncCurrentUser:', e?.code || e?.message);
+        return local;
+    }
 }
 
 // Выход из аккаунта

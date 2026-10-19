@@ -822,6 +822,9 @@ function renderAchievementsTab() {
 // ══════════════════════════════════════════
 import { updateUser } from './js/api.js';
 import { compressImage } from './js/utils.js';
+import { syncCurrentUser } from './js/auth.js';
+import './js/scroll-lock.js'; // страница не крутится под открытыми окнами
+syncCurrentUser().catch(() => {}); // свежий аватар/Telegram из Firestore в локальную копию
 
 let editAvatarData = null;
 

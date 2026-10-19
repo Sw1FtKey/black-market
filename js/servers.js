@@ -1,5 +1,5 @@
 // ===== ИМПОРТ FIREBASE =====
-import { getAllAds, saveUser, getBannedUsers } from './api.js';
+import { getAllAds, updateUser, getBannedUsers } from './api.js';
 import { ALL_SERVERS } from './servers-data.js';
 
 let adCountsCache = {};
@@ -46,10 +46,14 @@ async function saveCurrentUser(user) {
     // Всегда сохраняем в localStorage для быстрого доступа
     localStorage.setItem('currentUser', JSON.stringify(user));
 
-    // Синхронизируем с Firebase — апдейтим только свой документ
+    // Синхронизируем с Firebase — точечно обновляем ТОЛЬКО поле server.
+    // Раньше тут записывалась вся локальная копия пользователя целиком
+    // (setDoc без merge): если локальная копия устарела (нет аватара,
+    // Telegram, бейджей, выданных админом), выбор сервера СТИРАЛ их в
+    // Firestore.
     try {
-        await saveUser(user);
-        console.log('Пользователь сохранён в Firebase');
+        await updateUser(user.nickname, { nickname: user.nickname, server: user.server });
+        console.log('Сервер сохранён в Firebase');
     } catch (e) {
         console.error('Ошибка синхронизации с Firebase:', e);
     }
@@ -124,8 +128,13 @@ function createServerCard(server, isLarge = false) {
     div.style.setProperty('--server-color-dark', darkColor);
     div.style.setProperty('--server-color-glow', glowColor);
 
-    div.addEventListener('click', () => {
-        saveServer(server.name);
+    div.addEventListener('click', async () => {
+        if (div.dataset.busy) return;          // защита от двойного тапа
+        div.dataset.busy = '1';
+        div.style.opacity = '0.6';
+        // Дожидаемся записи ПЕРЕД переходом — раньше saveServer не ждали, и
+        // навигация могла оборвать запись в Firestore на полпути.
+        await saveServer(server.name);
         window.location.href = 'index.html';
     });
 

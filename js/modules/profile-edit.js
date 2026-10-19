@@ -156,7 +156,10 @@ export async function saveProfileChanges() {
             const myAds = allAds.filter(ad => ad.author === oldNickname);
             await Promise.all(myAds.map(ad => updateAd(ad.id, { author: newNickname })));
 
-            // 2. Удаляем старый документ пользователя (тоже под старым токеном)
+            // 2. Берём СВЕЖИЙ профиль из Firestore (локальная копия может быть
+            //    устаревшей — без аватара/Telegram/бейджей) и удаляем старый
+            //    документ (тоже под старым токеном)
+            const remoteUser = await findUser(oldNickname);
             await deleteUserDoc(oldNickname);
 
             // 3. Меняем displayName в Firebase Auth и форсируем обновление
@@ -166,7 +169,7 @@ export async function saveProfileChanges() {
 
             // 4. Создаём новый документ пользователя под новым ником
             const { password, ...safeUser } = user; // на всякий случай не переносим пароль, если он где-то завалялся
-            await saveUser({ ...safeUser, nickname: newNickname });
+            await saveUser({ ...safeUser, ...(remoteUser || {}), nickname: newNickname });
         }
     } catch (e) {
         console.error('Ошибка сохранения профиля:', e);
