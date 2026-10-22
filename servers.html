@@ -2,52 +2,52 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Выбор сервера — Black Market</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/auth.css">
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="css/servers.css">
 </head>
 <body class="servers-body">
 
-<!-- Кнопка назад -->
-<a href="register.html" class="back-button">← Назад</a>
-
-<!-- Переключатель режимов -->
-<div class="server-mode-toggle">
-    <button id="myServerBtn" class="mode-btn active">Мой сервер</button>
-    <button id="allServersBtn" class="mode-btn">Все сервера</button>
-</div>
-
-<h1 class="servers-title">Выберите сервер</h1>
-
-<!-- ПОИСК СЕРВЕРОВ -->
-<div class="server-search-container" id="serverSearchContainer" style="max-width: 500px; margin: 0 auto 30px; display: none;">
-    <div class="server-search-wrapper" style="position: relative;">
-        <span class="search-icon" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888;"><i data-lucide="search" width="16" height="16"></i></span>
-        <input type="text" id="serverSearchInput" placeholder="Поиск сервера..." 
-               style="width: 100%; padding: 14px 20px 14px 45px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); 
-                      background: rgba(34,34,34,0.8); color: white; font-size: 16px;">
-        <button id="clearSearchBtn" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); 
-                background: none; border: none; color: #888; cursor: pointer; font-size: 18px; display: none;"><i data-lucide="x" width="16" height="16"></i></button>
+<div class="srv-page">
+    <div class="srv-head">
+        <a href="register.html" class="srv-back">← Назад</a>
+        <h1 class="srv-title">Выберите сервер</h1>
+        <div class="srv-seg" id="srvSeg">
+            <button type="button" id="myServerBtn" class="on">Мой сервер</button>
+            <button type="button" id="allServersBtn">Все сервера</button>
+        </div>
     </div>
-    <p class="search-results-count" id="searchResultsCount" style="color: #888; font-size: 13px; margin-top: 10px; text-align: center;"></p>
+
+    <!-- Мой (последний выбранный) сервер -->
+    <section id="singleServerView">
+        <div class="srv-mywrap">
+            <div class="srv-mylabel">Последний выбранный сервер:</div>
+            <div id="srvMyCard"></div>
+            <button type="button" class="srv-change" id="changeServerBtn">Сменить сервер</button>
+        </div>
+    </section>
+
+    <!-- Все сервера -->
+    <section id="allServersView" class="hidden">
+        <div class="srv-tools">
+            <div class="srv-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input id="serverSearchInput" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
+                       autocapitalize="off" spellcheck="false" placeholder="Поиск сервера…">
+                <button type="button" class="srv-clear" id="clearSearchBtn" aria-label="Очистить поиск">×</button>
+            </div>
+            <div class="srv-chips" id="srvChips"></div>
+        </div>
+        <div class="srv-count" id="searchResultsCount"></div>
+        <div id="srvMine" class="hidden"></div>
+        <div id="serversGrid"></div>
+    </section>
 </div>
 
-<!-- Контейнер для одного сервера -->
-<div class="single-server-container hidden" id="singleServerView">
-    <div class="last-server-info">
-        <p>Последний выбранный сервер:</p>
-        <div class="server-card-large" id="lastServerCard"></div>
-        <button class="change-server-btn" id="changeServerBtn">Сменить сервер</button>
-    </div>
-</div>
-
-<!-- Сетка всех серверов -->
-<div class="servers-grid" id="serversGrid"></div>
 <script type="module" src="js/error-logger.js"></script>
 <script type="module" src="js/servers.js"></script>
-<script>document.addEventListener("DOMContentLoaded", () => { if (window.lucide) lucide.createIcons(); });</script>
 </body>
 </html>

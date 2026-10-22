@@ -71,7 +71,7 @@ export function getServerBadgeHtml(server) {
     const color = SERVER_COLORS[server.toUpperCase()] || '#888';
     // Всегда белый текст — цвет сервера только в рамке и фоне
     // Для светлых серверов усиливаем фон чтобы был виден контраст
-    const lightServers = ['WHITE','PLATINUM','LIME','YELLOW','GOLD','AQUA','ICE','GREEN','ARZAMAS','NOVOSIB','EKB'];
+    const lightServers = ['WHITE','PLATINUM','LIME','YELLOW','GOLD','AQUA','ICE','GREEN','ARZAMAS','NOVOSIB','EKB','TASHKENT'];
     const isLight = lightServers.includes(server.toUpperCase());
     const bg = isLight ? `${color}35` : `${color}18`;
     const border = isLight ? `${color}80` : `${color}50`;

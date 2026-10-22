@@ -96,5 +96,6 @@ export const ALL_SERVERS = [
     { name: "MAGADAN", color: "#9e9e9e" },
     { name: "CHEREPOVETS", color: "#1976d2" },
     { name: "NORILSK", color: "#4fc3f7" },
-    { name: "ASTANA", color: "#26c6da" }
+    { name: "ASTANA", color: "#26c6da" },
+    { name: "TASHKENT", color: "#ffffff" }
 ];
