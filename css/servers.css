@@ -6,7 +6,12 @@
 
 .servers-body {
     --red: #ff1e1e; --line: rgba(255,255,255,.12); --muted: #9a9a9a;
-    min-height: 100vh; position: relative; color: #f2f2f2; background: #0b0b0b;
+    min-height: 100vh; position: relative; color: #f2f2f2;
+    /* Фон body прозрачный: в base.css у html и body свой непрозрачный фон
+       (#0b0b0b), и такой body рисовался ПОВЕРХ картинки на ::before с
+       z-index:-1 — картинка фона была не видна. Цвет-запас лежит на html
+       (из base.css), картинка — на ::before. */
+    background: transparent !important;
     padding-bottom: calc(28px + env(safe-area-inset-bottom));
 }
 /* Фон — на фиксированных псевдоэлементах, а не background-attachment:fixed
@@ -102,7 +107,7 @@
 /* ── Телефон ── */
 @media (max-width: 720px) {
     .servers-body::before { filter: none; transform: none; }          /* тяжёлый blur на телефоне не нужен */
-    .servers-body::after { background: rgba(0,0,0,.78); }
+    .servers-body::after { background: rgba(0,0,0,.6); }
     .srv-page { padding: 0 12px; }
     .srv-head { grid-template-columns: auto 1fr; grid-template-areas: "back title" "seg seg"; padding: 14px 0 6px; row-gap: 12px; }
     .srv-back { grid-area: back; }
