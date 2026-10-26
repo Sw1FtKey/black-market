@@ -227,6 +227,19 @@ function setupSearch() {
     });
 }
 
+// Липкая панель поиска прозрачна, пока лежит на своём месте, и получает фон
+// (класс .stuck), только когда прилипла к верху при прокрутке. Следим за
+// маркером над панелью: ушёл за верхний край экрана — значит, панель прилипла.
+function setupStickyState() {
+    const tools = document.querySelector('.srv-tools');
+    const sentinel = $('srvSentinel');
+    if (!tools) return;
+    if (!sentinel || !('IntersectionObserver' in window)) { tools.classList.add('stuck'); return; }
+    new IntersectionObserver(([entry]) => {
+        tools.classList.toggle('stuck', !entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }).observe(sentinel);
+}
+
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 document.addEventListener('DOMContentLoaded', async () => {
     // Авторизация
@@ -252,6 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderChips();
     setupSearch();
+    setupStickyState();
     $('myServerBtn').addEventListener('click', () => showView('my'));
     $('allServersBtn').addEventListener('click', () => showView('all'));
     $('changeServerBtn').addEventListener('click', () => showView('all'));
