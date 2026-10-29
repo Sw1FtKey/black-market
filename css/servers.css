@@ -110,6 +110,19 @@
 .srv-empty { text-align: center; color: #aaa; padding: 56px 20px; }
 .srv-empty b { display: block; font-size: 18px; color: #eee; margin-bottom: 8px; }
 
+/* ── Липкая панель на ПК: парящая стеклянная капсула ──
+   Пока панель на своём месте — прозрачная, без плашки. Когда прилипла (класс
+   .stuck, см. servers.js) — скруглённая капсула по центру со стеклянным фоном
+   и тенью. На телефоне панель остаётся на всю ширину (см. ниже). */
+@media (min-width: 721px) {
+    .srv-tools { top: 10px; border: 1px solid transparent; border-radius: 22px;
+        transition: background .2s ease, border-color .2s ease, box-shadow .25s ease; }
+    .srv-tools.stuck { margin: 0 auto; max-width: 780px; padding: 10px 18px 12px;   /* вертикальные отступы как у базовой панели — иначе контент «прыгает» */
+        background: rgba(14,14,14,.82); border-color: rgba(255,255,255,.1);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 14px 36px rgba(0,0,0,.55); }
+}
+
 /* ── Телефон ── */
 @media (max-width: 720px) {
     .servers-body::before { filter: none; transform: none; }          /* тяжёлый blur на телефоне не нужен */

@@ -235,9 +235,11 @@ function setupStickyState() {
     const sentinel = $('srvSentinel');
     if (!tools) return;
     if (!sentinel || !('IntersectionObserver' in window)) { tools.classList.add('stuck'); return; }
+    // rootMargin -10px = липкий отступ панели от верха (top: 10px на ПК):
+    // маркер считается ушедшим, когда достиг этой линии, а не края экрана.
     new IntersectionObserver(([entry]) => {
-        tools.classList.toggle('stuck', !entry.isIntersecting && entry.boundingClientRect.top < 0);
-    }).observe(sentinel);
+        tools.classList.toggle('stuck', !entry.isIntersecting && entry.boundingClientRect.top < 10);
+    }, { rootMargin: '-10px 0px 0px 0px' }).observe(sentinel);
 }
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
