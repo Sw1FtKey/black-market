@@ -3,6 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+// Знакомство с проектом — для НОВЫХ посетителей. Если человек уже входил в
+// аккаунт (в localStorage есть currentUser — по нему все страницы сайта
+// решают, залогинен ли пользователь), сразу отправляем его на главную.
+//  • Скрипт стоит в <head> и выполняется до отрисовки — лендинг не мелькает.
+//  • location.replace, а не href: лендинг не остаётся в истории, и кнопка
+//    «Назад» не возвращает на него.
+//  • Посмотреть лендинг, будучи залогиненным: добавь ?preview к адресу.
+// Бан и «сервер не выбран» главная страница обрабатывает сама.
+(function () {
+    try {
+        if (/(^|[?&])preview(=|&|$)/.test(location.search)) return;
+        var user = JSON.parse(localStorage.getItem('currentUser'));
+        if (user && user.nickname) {
+            document.documentElement.style.visibility = 'hidden';
+            location.replace('index.html');
+        }
+    } catch (e) { /* битые данные или закрытое хранилище — просто показываем лендинг */ }
+})();
+</script>
 <title>Black Market — торговая площадка Black Russia</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="stylesheet" href="css/base.css">
