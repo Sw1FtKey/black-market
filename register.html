@@ -3,6 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+    // Если человек уже входил в аккаунт (в localStorage есть currentUser — по
+    // нему все страницы сайта решают, залогинен ли пользователь), форму входа
+    // ему не показываем: сразу ведём на главную (или на выбор сервера, если
+    // сервер ещё не выбран). Скрипт в <head> выполняется до отрисовки, поэтому
+    // форма не мелькает. Раньше страница сначала показывала форму и ждала
+    // ответа Firestore про бан — человек успевал кликнуть в поле ника, и через
+    // секунду его неожиданно перекидывало на главную.
+    // Бан проверяют главная страница и выбор сервера.
+    (function () {
+        try {
+            var user = JSON.parse(localStorage.getItem('currentUser'));
+            if (user && user.nickname) {
+                document.documentElement.style.visibility = 'hidden';
+                location.replace(user.server ? 'index.html' : 'servers.html');
+            }
+        } catch (e) { /* битые данные — показываем форму */ }
+    })();
+    </script>
     <title>Black Market — Вход</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/base.css">

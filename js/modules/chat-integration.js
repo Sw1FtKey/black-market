@@ -43,12 +43,25 @@ export function hasRole(minRole) {
 
 let unreadCountUnsubscribe = null;
 
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) return false;
-    if (Notification.permission === 'granted') return true;
-    if (Notification.permission === 'denied') return false;
-    const result = await Notification.requestPermission();
-    return result === 'granted';
+// Браузеры разрешают запрашивать доступ к уведомлениям ТОЛЬКО из обработчика
+// действия пользователя (клик, нажатие клавиши, касание). Раньше запрос
+// отправлялся прямо при загрузке страницы — Firefox его отклонял с ошибкой
+// «разрешение может быть предоставлено только для пользовательского
+// короткоживущего обработчика события», и разрешение не запрашивалось
+// никогда. Теперь ждём первого действия пользователя на странице и
+// спрашиваем один раз. Если уведомления не поддерживаются (например, обычная
+// вкладка iPhone) или решение уже принято — ничего не делаем.
+function armNotificationPrompt() {
+    if (!('Notification' in window) || Notification.permission !== 'default') return;
+    const events = ['click', 'keydown', 'touchend'];
+    const ask = () => {
+        events.forEach(e => document.removeEventListener(e, ask, true));
+        try {
+            const result = Notification.requestPermission();
+            if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch (e) { /* старый браузер или запрет — уведомления просто не будут показаны */ }
+    };
+    events.forEach(e => document.addEventListener(e, ask, true));
 }
 
 function showChatNotification(count) {
@@ -67,10 +80,17 @@ function showChatNotification(count) {
 
 let _prevUnreadCount = 0;
 
+const BASE_TITLE = 'Black Market';
+function updateTabTitle(count) {
+    document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE;
+}
+
 export async function initChat() {
     try {
-        // Запрашиваем разрешение на уведомления
-        await requestNotificationPermission();
+        // Разрешение на уведомления спрашиваем на первом действии пользователя
+        // и НЕ ждём ответа: значок непрочитанных сообщений должен работать
+        // независимо от того, разрешил ли человек уведомления.
+        armNotificationPrompt();
 
         const { subscribeToUnreadCount } = await import('../chat.js');
         unreadCountUnsubscribe = subscribeToUnreadCount((count) => {
@@ -80,17 +100,13 @@ export async function initChat() {
                 badge.classList.toggle('hidden', count === 0);
             }
 
-            // Показываем уведомление только если счётчик вырос
-            if (count > _prevUnreadCount && _prevUnreadCount !== null) {
-                showChatNotification(count);
+            // Всплывающее уведомление — только если счётчик вырос
+            if (count > _prevUnreadCount) showChatNotification(count);
 
-                // Меняем title вкладки
-                if (count > 0) {
-                    document.title = `(${count}) Black Market`;
-                } else {
-                    document.title = 'Black Market';
-                }
-            }
+            // Заголовок вкладки показывает актуальное число (и сбрасывается,
+            // когда сообщений не осталось — раньше "(3) Black Market" висел
+            // до следующей смены вкладки)
+            updateTabTitle(count);
             _prevUnreadCount = count;
         });
     } catch (e) {
@@ -99,13 +115,7 @@ export async function initChat() {
 }
 
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        if (_prevUnreadCount > 0) {
-            document.title = `(${_prevUnreadCount}) Black Market`;
-        } else {
-            document.title = 'Black Market';
-        }
-    }
+    if (document.visibilityState === 'visible') updateTabTitle(_prevUnreadCount);
 });
 
 window.addEventListener('beforeunload', () => {

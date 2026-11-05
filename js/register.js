@@ -169,19 +169,13 @@ async function handleRegister(e) {
 // ─────────────────────────────────────────────
 // ПРОВЕРКА ПРИ ЗАГРУЗКЕ
 // ─────────────────────────────────────────────
-async function checkExistingAuth() {
-    const stored = localStorage.getItem('currentUser');
-    if (!stored) return;
-
-    const user = JSON.parse(stored);
-    const banStatus = await checkBanStatus(user.nickname);
-
-    if (banStatus.banned) {
-        localStorage.removeItem('currentUser');
-        try { await signOut(auth); } catch {}
-        showToast('Ваш аккаунт заблокирован. Причина: ' + banStatus.reason, 'error');
-        return;
-    }
-
-    window.location.href = user.server ? 'index.html' : 'servers.html';
+function checkExistingAuth() {
+    // Уже вошёл — сразу уходим, не дожидаясь сети. Раньше тут сначала шёл
+    // запрос в Firestore за статусом бана, и форма входа всё это время была
+    // видна и кликабельна. Проверку бана делают главная страница и выбор
+    // сервера (при бане они разлогинивают и возвращают сюда).
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('currentUser')); } catch { /* битые данные */ }
+    if (!user || !user.nickname) return;
+    window.location.replace(user.server ? 'index.html' : 'servers.html');
 }
