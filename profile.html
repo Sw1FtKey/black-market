@@ -733,13 +733,10 @@ window.openAd = function(adId) {
 
 // Написать пользователю
 window.startChatWithUser = async function() {
-    try {
-        const { createChat } = await import('./chat.js');
-        const chatId = await createChat(nickname, null, null);
-        if (chatId) window.location.href = `chat.html?chatId=${chatId}`;
-    } catch (e) {
-        console.error(e);
-    }
+    // Чат создаёт и открывает сама страница chat.html по параметру ?with=
+    // (раньше тут был импорт ./chat.js по неверному пути и ссылка на
+    // несуществующий параметр chatId — кнопка не работала вообще).
+    window.location.href = 'chat.html?with=' + encodeURIComponent(nickname);
 };
 
 // Переключение табов

@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 — Black Market</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/base.css">
     <style>
+        /* Своя база: страница должна выглядеть правильно, даже если base.css не загрузился */
+        html, body { margin: 0; min-height: 100%; background: #0b0b0b; color: #fff; font-family: Arial, Helvetica, sans-serif; }
+
         .error-page {
             min-height: 100vh;
             display: flex;
@@ -103,7 +106,7 @@
     <p class="error-title">Страница не найдена</p>
     <p class="error-hint">Возможно, ссылка устарела или объявление было удалено</p>
     <div class="error-btns">
-        <a href="index.html" class="error-btn-primary">← На главную</a>
+        <a href="/index.html" class="error-btn-primary">← На главную</a>
         <a href="javascript:history.back()" class="error-btn-secondary">Назад</a>
     </div>
 </div>

@@ -59,6 +59,7 @@ const STOCK_PHOTOS = {
     // рендер знака (plate-render.js), блок фото у них скрыт целиком.
 };
 let useStockPhoto = false;    // пользователь нажал "Использовать"
+const stockFailed = new Set(); // заглушки, которых нет на сервере (404) — больше не предлагаем
 let stockPhotoDismissed = false; // пользователь нажал "Оставить без фото" — не показывать снова для этой категории
 
 // ===== СОСТОЯНИЕ КНОПОК =====
@@ -296,7 +297,13 @@ function renderPhotoPreview() {
             <button type="button" class="remove-photo" onclick="cancelStockPhoto()">×</button>
         `;
         photoPreview.appendChild(div);
-        setImgWithFallbackChain(div.querySelector('img'), stockCandidates);
+        setImgWithFallbackChain(div.querySelector('img'), stockCandidates, () => {
+            stockFailed.add(stockKey(categorySelect.value));
+            useStockPhoto = false;
+            renderPhotoPreview();
+            updateStockPhotoSuggestion();
+            showToast('Стандартное фото для этой категории недоступно', 'warning');
+        });
     }
 
     const uploadBtn = document.querySelector('.upload-btn');
@@ -334,7 +341,11 @@ const stockSuggestImg = document.getElementById('stockPhotoSuggestImg');
 // заглушка категории) теперь в business-data.js (businessPhotoCandidates) —
 // категория у бизнеса больше не выбирается отдельно от номера, так что
 // без выбранного конкретного бизнеса кандидатов для business просто нет.
+function stockKey(category) {
+    return category === 'business' ? 'business:' + (selectedBusiness?.number ?? '') : category;
+}
 function getStockPhotoCandidates(category) {
+    if (stockFailed.has(stockKey(category))) return [];
     if (category === 'business') {
         return selectedBusiness ? businessPhotoCandidates(selectedBusiness) : [];
     }
@@ -356,12 +367,12 @@ function imageExists(url) {
 // Для ПРЕВЬЮ (в форме) — не тратим лишний запрос на предварительную
 // проверку, а просто перебираем кандидатов через onerror самого <img>:
 // не загрузился первый — пробуем следующий, и так по цепочке.
-function setImgWithFallbackChain(imgEl, candidates) {
+function setImgWithFallbackChain(imgEl, candidates, onFail) {
     let i = 0;
     imgEl.onerror = () => {
         i++;
         if (i < candidates.length) imgEl.src = candidates[i];
-        else imgEl.onerror = null; // ни один вариант не загрузился — сдаёмся
+        else { imgEl.onerror = null; if (onFail) onFail(); } // ни один вариант не загрузился — сдаёмся
     };
     imgEl.src = candidates[0];
 }
@@ -378,7 +389,12 @@ function updateStockPhotoSuggestion() {
     const shouldShow = candidates.length > 0 && selectedPhotos.length === 0 && !useStockPhoto && !stockPhotoDismissed;
 
     stockSuggestBox.classList.toggle('hidden', !shouldShow);
-    if (shouldShow) setImgWithFallbackChain(stockSuggestImg, candidates);
+    if (shouldShow) {
+        setImgWithFallbackChain(stockSuggestImg, candidates, () => {
+            stockFailed.add(stockKey(category));
+            stockSuggestBox.classList.add('hidden');
+        });
+    }
 }
 
 document.getElementById('stockPhotoUseBtn')?.addEventListener('click', () => {
