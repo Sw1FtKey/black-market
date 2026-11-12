@@ -1,7 +1,7 @@
 // ===== MAIN — точка входа: инициализация главной страницы =====
 import { db, auth } from '../firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { showToast, compressImage } from '../utils.js';
+import { showToast, compressImage, escapeHtml } from '../utils.js';
 import { getAllAds, invalidateCache, checkBanStatus, saveBugReport } from '../api.js';
 import { syncCurrentUser } from '../auth.js';
 import '../scroll-lock.js'; // страница не крутится под открытыми окнами
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.copyToClipboard = async function(text) {
     try {
         await navigator.clipboard.writeText(text);
-        showToast('<i data-lucide="check" width="14" height="14"></i> Ник скопирован: ' + text);
+        showToast('<i data-lucide="check" width="14" height="14"></i> Ник скопирован: ' + escapeHtml(text));
     } catch (err) {
         // Fallback для старых браузеров
         const textarea = document.createElement('textarea');
@@ -219,7 +219,7 @@ window.copyToClipboard = async function(text) {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        showToast('<i data-lucide="check" width="14" height="14"></i> Ник скопирован: ' + text);
+        showToast('<i data-lucide="check" width="14" height="14"></i> Ник скопирован: ' + escapeHtml(text));
     }
 };
 

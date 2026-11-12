@@ -1,5 +1,5 @@
 // ===== AD-MODAL — модалка просмотра объявления: галерея, продавец, отзывы, жалобы =====
-import { showToast, escapeHtml, formatPrice, timeAgo, copyToClipboard } from '../utils.js';
+import { showToast, escapeHtml, formatPrice, timeAgo, copyToClipboard, starsHtml, clampRating } from '../utils.js';
 import { getAllAds, getUsers, getReviews, saveReview } from '../api.js';
 import { renderUserBadges } from './sidebar.js';
 import { trackAdView } from './feed.js';
@@ -228,7 +228,7 @@ function getFirmwareName(value) {
 
 function calcRating(reviews) {
     if (!reviews.length) return null;
-    const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    const avg = reviews.reduce((sum, r) => sum + clampRating(r.rating), 0) / reviews.length;
     return avg.toFixed(1);
 }
 
@@ -293,7 +293,7 @@ async function renderSellerBlock(ad) {
         <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <span style="color:#aaa;font-size:13px;font-weight:600;">${escapeHtml(r.author)}</span>
-                <span style="color:#ffd700;font-size:13px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+                <span style="color:#ffd700;font-size:13px;">${starsHtml(r.rating)}</span>
             </div>
             ${r.text ? `<p style="color:#888;font-size:13px;margin:0;">${escapeHtml(r.text)}</p>` : ''}
         </div>
@@ -428,7 +428,7 @@ window.openAllReviews = async function(nickname) {
                 <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
                         <span style="color:#aaa;font-weight:600;">${escapeHtml(r.author)}</span>
-                        <span style="color:#ffd700;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+                        <span style="color:#ffd700;">${starsHtml(r.rating)}</span>
                     </div>
                     ${r.text ? `<p style="color:#888;font-size:13px;margin:0 0 6px;">${escapeHtml(r.text)}</p>` : ''}
                     <span style="color:#555;font-size:11px;">${new Date(r.createdAt).toLocaleDateString('ru-RU')}</span>
@@ -605,8 +605,8 @@ window.openSellerPage = async function(nickname) {
     // Рейтинг
     const ratingEl = document.getElementById('sellerRating');
     if (reviews.length > 0) {
-        const avg = (reviews.reduce((s, r) => s + (r.rating || 5), 0) / reviews.length).toFixed(1);
-        const stars = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
+        const avg = (reviews.reduce((s, r) => s + clampRating(r.rating), 0) / reviews.length).toFixed(1);
+        const stars = starsHtml(Math.round(avg));
         ratingEl.innerHTML = `<span style="color:#f9ca24">${stars}</span> ${avg} · ${reviews.length} отзывов · ${sellerAds.length} объявлений`;
     } else {
         ratingEl.textContent = `${sellerAds.length} объявлений · Нет отзывов`;

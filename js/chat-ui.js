@@ -54,15 +54,15 @@ function loadChatList() {
         const validChats = chats.filter(chat => chat.otherUser && chat.chatId);
         chatListEl.innerHTML = validChats.map(chat => `
             <div class="chat-item ${chat.chatId === currentChatId ? 'active' : ''}" 
-                onclick="selectChat('${chat.chatId}', this)"
+                data-chat-id="${escapeHtml(chat.chatId)}" onclick="selectChat(this.dataset.chatId, this)"
                  style="display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 12px; cursor: pointer; margin-bottom: 8px; ${chat.chatId === currentChatId ? 'background: rgba(255,30,30,0.2); border: 1px solid rgba(255,30,30,0.3);' : 'background: rgba(255,255,255,0.03);'}">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #ff1e1e 0%, #cc0000 100%); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: white; flex-shrink: 0;">
-                    ${chat.otherUser.charAt(0).toUpperCase()}
+                    ${escapeHtml(chat.otherUser.charAt(0).toUpperCase())}
                 </div>
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${chat.otherUser}</div>
-                    <div style="font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${chat.adTitle || 'Объявление'}</div>
-                    <div style="font-size: 13px; color: #aaa; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${chat.lastMessage || 'Нет сообщений'}</div>
+                    <div style="font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(chat.otherUser)}</div>
+                    <div style="font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(chat.adTitle || 'Объявление')}</div>
+                    <div style="font-size: 13px; color: #aaa; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(chat.lastMessage || 'Нет сообщений')}</div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 11px; color: #666;">${formatTime(chat.lastMessageAt)}</div>
@@ -139,10 +139,10 @@ async function renderMessages(chatId, messages, hasMore, onLoadMore) {
         <div style="display: flex; flex-direction: column; height: 100%;">
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(17,17,17,0.9);">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #ff1e1e 0%, #cc0000 100%); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">${chatData.otherUser.charAt(0).toUpperCase()}</div>
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #ff1e1e 0%, #cc0000 100%); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">${escapeHtml(chatData.otherUser.charAt(0).toUpperCase())}</div>
                     <div>
-                        <div style="color: white; font-weight: 600;">${chatData.otherUser}</div>
-                        <div style="color: #888; font-size: 13px;">${chatData.adTitle}</div>
+                        <div style="color: white; font-weight: 600;">${escapeHtml(chatData.otherUser)}</div>
+                        <div style="color: #888; font-size: 13px;">${escapeHtml(chatData.adTitle || '')}</div>
                     </div>
                 </div>
             </div>

@@ -64,6 +64,34 @@ export function escapeHtml(text) {
 }
 
 // ─────────────────────────────────────────────
+// БЕЗОПАСНЫЙ src ДЛЯ КАРТИНОК
+// ─────────────────────────────────────────────
+// Аватар лежит в users/{ник}, а этот документ пользователь пишет сам.
+// Вставлять его в <img src="..."> без проверки нельзя: строка вида
+// x" onerror="... выполнится у каждого, кто откроет профиль.
+// Пропускаем только data:image (base64) и https-ссылки.
+export function safeImgSrc(src) {
+    if (typeof src !== 'string') return '';
+    if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(src)) return src;
+    if (/^https:\/\/[^\s"'<>`]+$/.test(src)) return src;
+    return '';
+}
+
+// ─────────────────────────────────────────────
+// ЗВЁЗДЫ РЕЙТИНГА (оценка из базы может быть любой — зажимаем 1..5,
+// иначе '★'.repeat(1e9) вешает страницу, а repeat(-1) бросает ошибку)
+// ─────────────────────────────────────────────
+export function clampRating(r) {
+    const n = Math.round(Number(r));
+    return Number.isFinite(n) ? Math.min(5, Math.max(1, n)) : 5;
+}
+
+export function starsHtml(r) {
+    const n = clampRating(r);
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+}
+
+// ─────────────────────────────────────────────
 // ФОРМАТИРОВАНИЕ ЦЕНЫ
 // ─────────────────────────────────────────────
 export function formatPrice(price) {

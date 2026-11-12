@@ -1,6 +1,7 @@
 // ===== SIDEBAR — шторка профиля на главной странице =====
 import { getAllAds, getAdStats, getReviews } from '../api.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, safeImgSrc, starsHtml } from '../utils.js';
+import { logout } from '../auth.js';
 import { currentUser } from './main.js';
 import { ALL_SERVERS } from '../servers-data.js';
 import { BADGES_CONFIG, RARITY_LABELS, ROLE_LABELS } from '../badges-data.js';
@@ -28,7 +29,7 @@ export function initSidebarModule() {
 export function initSidebarHeader() {
     if (!currentUser) return;
 
-    const letter = currentUser.nickname?.charAt(0).toUpperCase() || 'P';
+    const letter = escapeHtml(currentUser.nickname?.charAt(0).toUpperCase() || 'P');
     // Берём аватар: сначала из currentUser, потом из отдельного localStorage ключа
     const avatar = currentUser.avatar
         || localStorage.getItem(`avatar_${currentUser.nickname}`)
@@ -44,9 +45,9 @@ export function initSidebarHeader() {
     if (profileBox) {
         profileBox.innerHTML = `
             <div class="header-avatar-circle" id="headerAvatarCircle">
-                ${avatar ? `<img src="${avatar}" alt="avatar">` : letter}
+                ${safeImgSrc(avatar) ? `<img src="${safeImgSrc(avatar)}" alt="avatar">` : letter}
             </div>
-            <span id="profileNickname">${currentUser.nickname}</span>
+            <span id="profileNickname">${escapeHtml(currentUser.nickname)}</span>
         `;
     }
 
@@ -57,7 +58,7 @@ export function initSidebarHeader() {
     if (serverEl) serverEl.innerHTML   = getServerBadgeHtml(currentUser.server);
 
     const circle = document.getElementById('sidebarAvatarCircle');
-    if (circle) circle.innerHTML = avatar ? `<img src="${avatar}" alt="avatar">` : letter;
+    if (circle) circle.innerHTML = safeImgSrc(avatar) ? `<img src="${safeImgSrc(avatar)}" alt="avatar">` : letter;
 
 
 }
@@ -75,7 +76,7 @@ export function getServerBadgeHtml(server) {
     const isLight = lightServers.includes(server.toUpperCase());
     const bg = isLight ? `${color}35` : `${color}18`;
     const border = isLight ? `${color}80` : `${color}50`;
-    return `<span class="server-badge" style="color:#fff;border-color:${border};background:${bg};text-shadow:0 1px 3px rgba(0,0,0,0.8);">${server.toUpperCase()}</span>`;
+    return `<span class="server-badge" style="color:#fff;border-color:${border};background:${bg};text-shadow:0 1px 3px rgba(0,0,0,0.8);">${escapeHtml(server.toUpperCase())}</span>`;
 }
 
 export function renderUserBadges(badges, size = 'md') {
@@ -157,8 +158,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.getElementById('logoutButton')?.addEventListener('click', () => {
-    localStorage.removeItem('currentUser');
-    window.location.href = 'register.html';
+    logout(); // signOut в Firebase + очистка localStorage + редирект
 });
 
 document.getElementById('addAdButton')?.addEventListener('click', () => {
@@ -207,7 +207,7 @@ async function loadSidebarStats() {
         reviewsEl.innerHTML = reviews.slice(0, 3).map(r => `
             <div class="sidebar-review-item">
                 <div class="sidebar-review-author">
-                    <span class="sidebar-review-stars">${'★'.repeat(r.rating || 5)}${'☆'.repeat(5 - (r.rating || 5))}</span>
+                    <span class="sidebar-review-stars">${starsHtml(r.rating)}</span>
                     <a href="profile.html?user=${encodeURIComponent(r.author)}" style="color:#ff6b6b;text-decoration:none;font-weight:600;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escapeHtml(r.author)}</a>
                 </div>
                 <div class="sidebar-review-text">${escapeHtml(r.text || '')}</div>

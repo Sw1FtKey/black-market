@@ -486,7 +486,7 @@
 import { db, auth } from './js/firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getAllAds, getReviews, getAdStats, getUserRole, findUser } from './js/api.js';
-import { escapeHtml, timeAgo, formatPrice } from './js/utils.js';
+import { escapeHtml, timeAgo, formatPrice, safeImgSrc, starsHtml, clampRating } from './js/utils.js';
 import { CATEGORY_COLORS, CATEGORY_BADGE_NAMES, CATEGORY_ICONS } from './js/categories-data.js';
 import { ALL_SERVERS } from './js/servers-data.js';
 import { BADGES_CONFIG, RARITY_LABELS, ROLE_LABELS } from './js/badges-data.js';
@@ -578,7 +578,7 @@ async function loadProfile() {
 function renderHero(userData, reviews, role) {
     // Аватар
     const avatarEl = document.getElementById('heroAvatar');
-    const avatar = userData?.avatar || localStorage.getItem(`avatar_${nickname}`);
+    const avatar = safeImgSrc(userData?.avatar || localStorage.getItem(`avatar_${nickname}`));
     if (avatar) {
         avatarEl.innerHTML = `<img src="${avatar}" alt="avatar">`;
     } else {
@@ -597,7 +597,7 @@ function renderHero(userData, reviews, role) {
     }
     if (userData?.server) {
         const color = SERVER_COLORS[userData.server.toUpperCase()] || '#888';
-        badgesHtml += `<span class="server-badge" style="color:#fff;border-color:${color}50;background:${color}20;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${userData.server.toUpperCase()}</span>`;
+        badgesHtml += `<span class="server-badge" style="color:#fff;border-color:${color}50;background:${color}20;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${escapeHtml(userData.server.toUpperCase())}</span>`;
     }
     // Бейджи достижений рядом с ником
     if (userData?.badges?.length) {
@@ -612,9 +612,9 @@ function renderHero(userData, reviews, role) {
     // Рейтинг
     const ratingEl = document.getElementById('heroRating');
     if (reviews.length > 0) {
-        const avg = (reviews.reduce((s, r) => s + (r.rating || 5), 0) / reviews.length).toFixed(1);
+        const avg = (reviews.reduce((s, r) => s + clampRating(r.rating), 0) / reviews.length).toFixed(1);
         const fullStars = Math.round(avg);
-        const stars = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
+        const stars = starsHtml(fullStars);
         ratingEl.innerHTML = `
             <span class="profile-hero-stars">${stars}</span>
             <span class="profile-hero-rating-val">${avg}</span>
@@ -654,7 +654,7 @@ function renderStats(adsCount, views, favs, reviews) {
     document.getElementById('statFavs').textContent  = favs;
 
     if (reviews.length > 0) {
-        const avg = (reviews.reduce((s, r) => s + (r.rating || 5), 0) / reviews.length).toFixed(1);
+        const avg = (reviews.reduce((s, r) => s + clampRating(r.rating), 0) / reviews.length).toFixed(1);
         document.getElementById('statRating').textContent = avg;
     } else {
         document.getElementById('statRating').textContent = '—';
@@ -705,7 +705,7 @@ function renderReviews(reviews) {
     }
 
     el.innerHTML = reviews.map(r => {
-        const stars = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
+        const stars = starsHtml(r.rating);
         return `
         <div class="profile-review">
             <div class="profile-review-head">
@@ -835,7 +835,7 @@ window.openEditProfile = function() {
     document.getElementById('editTelegramField').value = user.telegram || '';
     editAvatarData = null;
     const preview = document.getElementById('editAvatarPreview');
-    const avatar = user.avatar || localStorage.getItem('avatar_' + user.nickname);
+    const avatar = safeImgSrc(user.avatar || localStorage.getItem('avatar_' + user.nickname));
     if (avatar) {
         preview.innerHTML = '<img src="' + avatar + '" alt="avatar">';
     } else {

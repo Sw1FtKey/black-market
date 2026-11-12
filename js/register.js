@@ -137,6 +137,10 @@ async function handleRegister(e) {
             auth, nicknameToEmail(nickname), password
         );
         await updateProfile(userCredential.user, { displayName: nickname });
+        // Правила Firestore берут ник из ID-токена (поле name). Токен, выданный
+        // при создании аккаунта, ещё без displayName — без обновления запись
+        // users/{ник} падает с permission-denied для ников с заглавными буквами.
+        await userCredential.user.getIdToken(true);
 
         const newUser = {
             nickname,
@@ -148,7 +152,9 @@ async function handleRegister(e) {
         // Один документ users/{nickname} — не нужно читать всех
         // пользователей, чтобы добавить одного (и не грозит гонкой
         // между двумя одновременными регистрациями).
-        await saveUser(newUser);
+        let saved = await saveUser(newUser);
+        if (!saved) { await new Promise(r => setTimeout(r, 600)); saved = await saveUser(newUser); }
+        if (!saved) window.logWarn?.('register: не удалось сохранить users/{ник}', { nickname });
 
         saveCurrentUser(newUser);
         showToast('Аккаунт создан!', 'success');
