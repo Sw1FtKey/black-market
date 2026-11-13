@@ -76,7 +76,15 @@ export async function saveProfileChanges() {
     const newPassword = newPasswordInput ? newPasswordInput.value : '';
     const confirmPassword = confirmPasswordInput ? confirmPasswordInput.value : '';
 
-    const nicknameChanged = !!newNickname && newNickname !== user.nickname;
+    // Смена ника отключена. Аккаунт Firebase Auth привязан к email, собранному
+    // из ника (updateEmail нигде не вызывается), поэтому после переименования
+    // войти под новым ником уже нельзя. Плюс операция не атомарна и не
+    // переносит чаты и отзывы.
+    if (newNickname && newNickname !== user.nickname) {
+        showToast('Никнейм изменить нельзя', 'error');
+        return;
+    }
+    const nicknameChanged = false;
     const passwordChanged = !!newPassword;
 
     if (!nicknameChanged && !passwordChanged) {

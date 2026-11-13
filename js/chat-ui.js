@@ -1,5 +1,6 @@
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { db } from './firebase-config.js';
+import { showToast } from './utils.js';
 
 import { 
     createChat, sendMessage, markAsRead, 
@@ -174,7 +175,7 @@ async function renderMessages(chatId, messages, hasMore, onLoadMore) {
             
             <div style="padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); background: rgba(17,17,17,0.9);">
                 <div style="display: flex; gap: 10px; align-items: flex-end;">
-                    <textarea id="messageInput" placeholder="Напишите сообщение..." rows="1" style="flex: 1; padding: 12px 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); background: rgba(34,34,34,0.8); color: white; font-size: 15px; resize: none; min-height: 44px; max-height: 120px; font-family: inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"></textarea>
+                    <textarea id="messageInput" placeholder="Напишите сообщение..." rows="1" maxlength="2000" style="flex: 1; padding: 12px 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); background: rgba(34,34,34,0.8); color: white; font-size: 15px; resize: none; min-height: 44px; max-height: 120px; font-family: inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"></textarea>
                     <button onclick="sendChatMessage()" id="sendBtn" style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #ff1e1e 0%, #cc0000 100%); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i data-lucide="send" width="18" height="18"></i></button>
                 </div>
             </div>
@@ -203,7 +204,13 @@ window.sendChatMessage = async function() {
     if (!text || !currentChatId) return;
     
     btn.disabled = true;
-    const success = await sendMessage(currentChatId, text);
+    let success = false;
+    try {
+        success = await sendMessage(currentChatId, text);
+    } catch (e) {
+        console.error('Ошибка отправки сообщения:', e);
+        showToast('Не удалось отправить сообщение', 'error');
+    }
     if (success) {
         input.value = '';
         input.style.height = '44px';

@@ -352,7 +352,7 @@ window.openReviewModal = function(nickname) {
                 </div>
             </div>
             <div style="margin-bottom:20px;">
-                <textarea id="reviewText" placeholder="Напишите отзыв (необязательно)..." rows="3"
+                <textarea id="reviewText" placeholder="Напишите отзыв (необязательно)..." rows="3" maxlength="500"
                     style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(34,34,34,0.8);color:white;font-size:14px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
             </div>
             <button onclick="submitReview('${escapeHtml(nickname)}')"
