@@ -88,7 +88,9 @@ export function clampRating(r) {
 
 export function starsHtml(r) {
     const n = clampRating(r);
-    return '★'.repeat(n) + '☆'.repeat(5 - n);
+    // Закрашенные звёзды яркие, пустые тусклые: оценка читается с одного взгляда
+    return '<span style="color:#ffc107;">' + '★'.repeat(n) + '</span>' +
+           '<span style="color:#4a4a4a;">' + '★'.repeat(5 - n) + '</span>';
 }
 
 // ─────────────────────────────────────────────

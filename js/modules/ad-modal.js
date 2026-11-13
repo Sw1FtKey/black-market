@@ -293,7 +293,7 @@ async function renderSellerBlock(ad) {
         <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <span style="color:#aaa;font-size:13px;font-weight:600;">${escapeHtml(r.author)}</span>
-                <span style="color:#ffd700;font-size:13px;">${starsHtml(r.rating)}</span>
+                <span style="color:#ffd700;font-size:16px;">${starsHtml(r.rating)}</span>
             </div>
             ${r.text ? `<p style="color:#888;font-size:13px;margin:0;">${escapeHtml(r.text)}</p>` : ''}
         </div>

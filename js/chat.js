@@ -172,9 +172,9 @@ export function subscribeToMessages(chatId, callback) {
         }
 
         // Мерджим: старые сообщения (из loadMore) + свежие из подписки
-        const oldIds = new Set(allMessages.map(m => m.id));
-        const newFresh = fresh.filter(m => !oldIds.has(m.id));
-        allMessages = [...allMessages, ...newFresh];
+        const byId = new Map(allMessages.map(m => [m.id, m]));
+        fresh.forEach(m => byId.set(m.id, m)); // обновляем и уже известные сообщения (read: false → true), а не только добавляем новые
+        allMessages = Array.from(byId.values()).sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
 
         callback(allMessages, hasMore);
     });

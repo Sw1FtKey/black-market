@@ -18,6 +18,16 @@ window.addEventListener('beforeunload', () => {
     if (chatsUnsubscribe) chatsUnsubscribe();
 });
 
+// id входящих сообщений, для которых «прочитано» уже запрошено (чтобы не слать повторно)
+const requestedRead = new Set();
+
+// Вернулся на вкладку с открытым чатом — отмечаем накопившееся прочитанным
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentChatId) {
+        markAsRead(currentChatId).catch(e => console.warn('markAsRead:', e?.code || e?.message));
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     loadChatList();
     
@@ -122,9 +132,21 @@ async function loadMessages(chatId) {
     
     let loadMoreFn = null;
     window._chatLoadMore = null;
+    requestedRead.clear();
 
     const subscription = subscribeToMessages(chatId, (messages, hasMore) => {
         renderMessages(chatId, messages, hasMore, () => loadMoreFn && loadMoreFn());
+
+        // Сообщения, пришедшие пока чат открыт, сразу помечаем прочитанными.
+        // Раньше «прочитано» ставилось только при открытии диалога — счётчик в
+        // списке чатов висел, а у отправителя не появлялась вторая галочка.
+        const newUnread = messages
+            .filter(m => m.sender !== currentUser.nickname && !m.read && !requestedRead.has(m.id))
+            .map(m => m.id);
+        if (newUnread.length && chatId === currentChatId && document.visibilityState === 'visible') {
+            newUnread.forEach(id => requestedRead.add(id));
+            markAsRead(chatId).catch(e => console.warn('markAsRead:', e?.code || e?.message));
+        }
     });
     messagesUnsubscribe = () => subscription.unsubscribe();
     loadMoreFn = subscription.loadMore;
@@ -134,6 +156,15 @@ async function loadMessages(chatId) {
 async function renderMessages(chatId, messages, hasMore, onLoadMore) {
     const chatData = currentChatData;
     if (!chatData) return;
+
+    // Перерисовка полная: запоминаем набранный текст и положение прокрутки,
+    // иначе каждое новое сообщение или «прочитано» стирало бы черновик и
+    // дёргало прокрутку вниз.
+    const prevInput = document.getElementById('messageInput');
+    const draft = prevInput ? prevInput.value : '';
+    const hadFocus = !!prevInput && document.activeElement === prevInput;
+    const prevContainer = document.getElementById('messagesContainer');
+    const distFromBottom = prevContainer ? prevContainer.scrollHeight - prevContainer.scrollTop : null;
     
     const chatWindow = document.getElementById('chatWindow');
     chatWindow.innerHTML = `
@@ -183,7 +214,12 @@ async function renderMessages(chatId, messages, hasMore, onLoadMore) {
     `;
     
     const container = document.getElementById('messagesContainer');
-    if (container) container.scrollTop = container.scrollHeight;
+    if (container) {
+        // Первая отрисовка или человек у самого низа — вниз; иначе сохраняем
+        // положение относительно низа (подгрузка старых сообщений не «прыгает»)
+        const nearBottom = distFromBottom === null || (distFromBottom - container.clientHeight) < 80;
+        container.scrollTop = nearBottom ? container.scrollHeight : container.scrollHeight - distFromBottom;
+    }
     
     const textarea = document.getElementById('messageInput');
     if (textarea) {
@@ -191,7 +227,12 @@ async function renderMessages(chatId, messages, hasMore, onLoadMore) {
             this.style.height = '44px';
             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
-        textarea.focus();
+        if (draft) {
+            textarea.value = draft;
+            textarea.style.height = '44px';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+        if (!prevInput || hadFocus) textarea.focus();
     }
 
     if (window.lucide) lucide.createIcons();
