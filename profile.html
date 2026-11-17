@@ -486,7 +486,7 @@
 import { db, auth } from './js/firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getAllAds, getReviews, getAdStats, getUserRole, findUser } from './js/api.js';
-import { escapeHtml, timeAgo, formatPrice, safeImgSrc, starsHtml, clampRating } from './js/utils.js';
+import { escapeHtml, timeAgo, formatPrice, safeImgSrc, starsHtml, clampRating, adThumbSrc } from './js/utils.js';
 import { CATEGORY_COLORS, CATEGORY_BADGE_NAMES, CATEGORY_ICONS } from './js/categories-data.js';
 import { ALL_SERVERS } from './js/servers-data.js';
 import { BADGES_CONFIG, RARITY_LABELS, ROLE_LABELS } from './js/badges-data.js';
@@ -675,8 +675,9 @@ function renderAds(ads) {
     el.innerHTML = ads.map(ad => {
         const color = CATEGORY_COLORS[ad.category] || '#888';
         const catName = CATEGORY_BADGE_NAMES[ad.category] || ad.category;
-        const thumb = ad.photos?.[0]
-            ? `<img src="${ad.photos[0]}" alt="">`
+        const thumbSrc = adThumbSrc(ad);
+        const thumb = thumbSrc
+            ? `<img src="${thumbSrc}" alt="">`
             : getCatEmoji(ad.category);
 
         return `

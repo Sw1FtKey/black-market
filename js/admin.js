@@ -4,6 +4,7 @@ import './scroll-lock.js'; // страница не крутится под от
 import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { CATEGORY_SIDEBAR_NAMES } from './categories-data.js';
 import { BADGES_CONFIG } from './badges-data.js';
+import { safeImgSrc } from './utils.js';
 
 // ===== ЗАЩИТА ОТ ДВОЙНОГО КЛИКА =====
 const processingActions = new Set();
@@ -178,6 +179,7 @@ async function updateUserFields(nickname, updates) {
 async function deleteAdById(adId) {
     try {
         const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        await deleteDoc(doc(db, 'adPhotos', String(adId))).catch(() => {});
         await deleteDoc(doc(db, 'ads', String(adId)));
         return true;
     } catch(e) { console.error('Ошибка удаления объявления:', e); return false; }
@@ -594,11 +596,18 @@ window.viewReportAd = async function(adId) {
 
 // ===== МОДАЛКА ПРОСМОТРА ОБЪЯВЛЕНИЯ =====
 function openAdModal(ad) {
+    // Полные фото лежат в adPhotos/{id} — подгружаем и открываем окно уже с ними
+    if (!Array.isArray(ad.photos) && ad.photoCount > 0) {
+        getDoc(doc(db, 'adPhotos', String(ad.id)))
+            .then(s => openAdModal({ ...ad, photos: s.exists() && Array.isArray(s.data().photos) ? s.data().photos : [] }))
+            .catch(() => openAdModal({ ...ad, photos: [] }));
+        return;
+    }
     const existing = document.getElementById('adminAdModal');
     if (existing) existing.remove();
     const priceFormatted = ad.price ? ad.price.toLocaleString('ru-RU') + ' ₽' : '—';
     const date = ad.createdAt ? new Date(ad.createdAt).toLocaleString('ru-RU') : '—';
-    const photos = ad.photos?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">${ad.photos.map(p => `<img src="${p}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : '';
+    const photos = ad.photos?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">${ad.photos.map(p => `<img src="${safeImgSrc(p)}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'adminAdModal';

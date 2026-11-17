@@ -1,6 +1,6 @@
 // ===== AD-MODAL — модалка просмотра объявления: галерея, продавец, отзывы, жалобы =====
-import { showToast, escapeHtml, formatPrice, timeAgo, copyToClipboard, starsHtml, clampRating } from '../utils.js';
-import { getAllAds, getUsers, getReviews, saveReview } from '../api.js';
+import { showToast, escapeHtml, formatPrice, timeAgo, copyToClipboard, starsHtml, clampRating, safeImgSrc, adThumbSrc } from '../utils.js';
+import { getAllAds, getUsers, getReviews, saveReview, withPhotos } from '../api.js';
 import { renderUserBadges } from './sidebar.js';
 import { trackAdView } from './feed.js';
 import { CATEGORY_BADGE_NAMES } from '../categories-data.js';
@@ -11,7 +11,11 @@ let currentPhotoIndex = 0;
 let currentAdPhotos = [];
 
 export async function openModal(ad) {
-    await trackAdView(ad.id);
+    // Полные фото лежат отдельно (adPhotos) — грузим вместе с учётом просмотра
+    ad = await Promise.all([
+        withPhotos(ad).catch(e => { console.error('Не удалось загрузить фото:', e); return { ...ad, photos: [] }; }),
+        trackAdView(ad.id)
+    ]).then(([full]) => full);
     closeModal();
     currentAdPhotos = ad.photos || [];
     currentPhotoIndex = 0;
@@ -136,7 +140,7 @@ function createModalContent(ad) {
         
         galleryHtml = `
             <div class="modal-gallery">
-                <img src="${ad.photos[0]}" class="gallery-image" alt="Фото">
+                <img src="${safeImgSrc(ad.photos[0])}" class="gallery-image" alt="Фото">
                 ${navButtons}
                 <div class="gallery-dots">${dotsHtml}</div>
             </div>
@@ -626,8 +630,8 @@ window.openSellerPage = async function(nickname) {
             onmouseout="this.style.background='rgba(255,255,255,0.04)'">
             ${ad.category === 'plates' && ad.plateCountry
                 ? `<div style="width:60px;height:${Math.round(60*120/520)}px;flex-shrink:0;border-radius:6px;overflow:hidden;align-self:center;">${renderPlateSVG(ad.plateCountry, ad.plateValues || {})}</div>`
-                : ad.photos?.[0]
-                ? `<img src="${ad.photos[0]}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
+                : adThumbSrc(ad)
+                ? `<img src="${adThumbSrc(ad)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
                 : `<div style="width:60px;height:60px;background:rgba(255,255,255,0.06);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#555;"><i data-lucide="image" width="22" height="22"></i></div>`
             }
             <div style="flex:1;min-width:0;">

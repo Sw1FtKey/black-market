@@ -1,7 +1,7 @@
 // ===== FEED — лента объявлений: фильтры, поиск, сортировка, карточки =====
 import { db } from '../firebase-config.js';
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { showToast, escapeHtml, timeAgo } from '../utils.js';
+import { showToast, escapeHtml, timeAgo, adThumbSrc, adPhotoCount } from '../utils.js';
 import { getAllAds } from '../api.js';
 import { isFavorite } from './favorites.js';
 import { CATEGORY_COLORS, CATEGORY_BADGE_NAMES, CATEGORY_ICONS } from '../categories-data.js';
@@ -105,8 +105,9 @@ function renderCardPreview(ad) {
     if (ad.category === 'plates' && ad.plateCountry) {
         return `<div class="item-card-preview plate-card-preview">${renderPlateSVG(ad.plateCountry, ad.plateValues || {})}</div>`;
     }
-    if (ad.photos?.length) {
-        return `<div class="item-card-preview"><img src="${ad.photos[0]}" alt="" loading="lazy"></div>`;
+    const thumbSrc = adThumbSrc(ad);
+    if (thumbSrc) {
+        return `<div class="item-card-preview"><img src="${thumbSrc}" alt="" loading="lazy"></div>`;
     }
     const color = CATEGORY_COLORS[ad.category] || '#888';
     const icon = CATEGORY_ICONS[ad.category] || 'package';
@@ -125,7 +126,7 @@ export function createAdCard(ad) {
     const catColor = categoryColors[ad.category] || '#888';
     const catName = escapeHtml(categoryNames[ad.category]) || escapeHtml(String(ad.category));
     const isFav = isFavorite(ad.id);
-    const photoBadge = ad.photos?.length ? `<span class="photo-badge"><i data-lucide="camera" width="12" height="12"></i> ${ad.photos.length}</span>` : '';
+    const photoBadge = adPhotoCount(ad) ? `<span class="photo-badge"><i data-lucide="camera" width="12" height="12"></i> ${adPhotoCount(ad)}</span>` : '';
     const plateSvg = renderCardPreview(ad);
     
     return `
@@ -166,7 +167,7 @@ export function createMyAdCard(ad) {
     
     const catColor = categoryColors[ad.category] || '#888';
     const catName = categoryNames[ad.category] || ad.category;
-    const photoBadge = ad.photos?.length ? `<span class="photo-badge"><i data-lucide="camera" width="12" height="12"></i> ${ad.photos.length}</span>` : '';
+    const photoBadge = adPhotoCount(ad) ? `<span class="photo-badge"><i data-lucide="camera" width="12" height="12"></i> ${adPhotoCount(ad)}</span>` : '';
     const plateSvg = renderCardPreview(ad);
     
     return `

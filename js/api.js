@@ -2,10 +2,11 @@
 // Импортируй нужное: import { getAllAds, saveAd, getUsers } from './api.js';
 
 import { db } from './firebase-config.js';
+import { compressImage } from './utils.js';
 import {
     doc, getDoc, setDoc, deleteDoc, updateDoc,
     collection, getDocs, addDoc, query, orderBy, where,
-    writeBatch, serverTimestamp
+    writeBatch, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ─────────────────────────────────────────────
@@ -63,11 +64,77 @@ export async function getAllAds() {
     });
 }
 
+// ─────────────────────────────────────────────
+// ФОТО ОБЪЯВЛЕНИЙ
+// ─────────────────────────────────────────────
+// Раньше все фото (base64, до ~200 КБ на объявление) лежали прямо в документе
+// ads/{id}, а лента загружала ВСЕ объявления целиком, хотя на карточке видно
+// только первое фото. Теперь:
+//   • в ads/{id} остаются thumb (миниатюра ~15 КБ) и photoCount;
+//   • полный список фото лежит в adPhotos/{id} и грузится при открытии объявления.
+// Ссылки на файлы (стоковые заглушки) и объявления без фото хранятся как раньше.
+// Старые объявления работают без изменений; перенести их можно один раз
+// функцией migrateAdPhotos() (см. внизу блока).
+const THUMB_WIDTH = 420;
+const THUMB_QUALITY = 0.65;
+const THUMB_MAX_LEN = 45000;
+const _photoCache = new Map();
+
+const isInlinePhoto = p => typeof p === 'string' && p.startsWith('data:image/');
+
+async function makeThumb(photos) {
+    const first = photos[0];
+    if (!first) return null;
+    if (!isInlinePhoto(first)) return first;            // ссылка на файл — маленькая, берём как есть
+    const t = await compressImage(first, THUMB_WIDTH, THUMB_QUALITY);
+    return t && t.length <= THUMB_MAX_LEN ? t : null;   // не удалось ужать — без миниатюры
+}
+
+// Полный список фото объявления (из самого объявления или из adPhotos)
+export async function getAdPhotos(ad) {
+    if (Array.isArray(ad.photos)) return ad.photos;
+    if (!(ad.photoCount > 0)) return [];
+    const key = String(ad.id);
+    if (_photoCache.has(key)) return _photoCache.get(key);
+    const snap = await getDoc(doc(db, 'adPhotos', key));
+    const photos = snap.exists() && Array.isArray(snap.data().photos) ? snap.data().photos : [];
+    _photoCache.set(key, photos);
+    return photos;
+}
+
+// Копия объявления с полным списком фото
+export async function withPhotos(ad) {
+    if (Array.isArray(ad.photos) || !(ad.photoCount > 0)) return ad;
+    return { ...ad, photos: await getAdPhotos(ad) };
+}
+
 export async function saveAd(ad) {
     try {
-        // Каждое объявление — отдельный документ с id как название
         const adRef = doc(db, 'ads', String(ad.id));
-        await setDoc(adRef, { ...ad, createdAt: ad.createdAt || new Date().toISOString() });
+        const data = { ...ad, createdAt: ad.createdAt || new Date().toISOString() };
+        const photos = Array.isArray(ad.photos) ? ad.photos : null;
+        const heavy = !!photos && photos.some(isInlinePhoto);
+        if (photos) {
+            data.photoCount = photos.length;
+            if (heavy) {
+                const thumb = await makeThumb(photos);
+                delete data.photos;
+                if (thumb) data.thumb = thumb;
+            }
+        }
+        // Сначала объявление: правила разрешают писать adPhotos только владельцу
+        // уже существующего объявления
+        await setDoc(adRef, data);
+        if (heavy) {
+            try {
+                await setDoc(doc(db, 'adPhotos', String(ad.id)), {
+                    adId: ad.id, photos, updatedAt: new Date().toISOString()
+                });
+            } catch (e) {
+                await deleteDoc(adRef).catch(() => {}); // объявление без фото не оставляем
+                throw e;
+            }
+        }
         invalidateCache('ads');
         return true;
     } catch (e) {
@@ -78,7 +145,10 @@ export async function saveAd(ad) {
 
 export async function deleteAd(adId) {
     try {
+        // Сначала фото: правила определяют владельца по самому объявлению
+        await deleteDoc(doc(db, 'adPhotos', String(adId))).catch(() => {});
         await deleteDoc(doc(db, 'ads', String(adId)));
+        _photoCache.delete(String(adId));
         invalidateCache('ads');
         return true;
     } catch (e) {
@@ -90,7 +160,28 @@ export async function deleteAd(adId) {
 export async function updateAd(adId, updates) {
     try {
         const adRef = doc(db, 'ads', String(adId));
-        await setDoc(adRef, { ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+        const data = { ...updates, updatedAt: new Date().toISOString() };
+        if (data.photos === undefined) delete data.photos; // фото не трогаем
+
+        if (Array.isArray(data.photos)) {
+            const photos = data.photos;
+            data.photoCount = photos.length;
+            if (photos.some(isInlinePhoto)) {
+                const thumb = await makeThumb(photos);
+                data.thumb = thumb || deleteField();
+                data.photos = deleteField();
+                await setDoc(doc(db, 'adPhotos', String(adId)), {
+                    adId: Number(adId) || adId, photos, updatedAt: data.updatedAt
+                });
+            } else {
+                // фото нет или только ссылки на файлы — храним в самом объявлении
+                data.thumb = deleteField();
+                await deleteDoc(doc(db, 'adPhotos', String(adId))).catch(() => {});
+            }
+        }
+
+        await setDoc(adRef, data, { merge: true });
+        _photoCache.delete(String(adId));
         invalidateCache('ads');
         return true;
     } catch (e) {
@@ -98,6 +189,40 @@ export async function updateAd(adId, updates) {
         return false;
     }
 }
+
+// Однократный перенос старых объявлений на новую схему. Запускать админу/владельцу
+// из консоли браузера на главной:  await migrateAdPhotos({ dryRun: true })  — посмотреть,
+// что будет;  await migrateAdPhotos()  — выполнить. Копия фото сначала пишется в
+// adPhotos, и только потом удаляется из объявления — потерять фото невозможно.
+export async function migrateAdPhotos({ dryRun = false } = {}) {
+    const snap = await getDocs(collection(db, 'ads'));
+    const res = { total: snap.size, migrated: 0, skipped: 0, failed: 0, dryRun };
+    for (const d of snap.docs) {
+        const ad = d.data();
+        if (!Array.isArray(ad.photos) || !ad.photos.some(isInlinePhoto)) { res.skipped++; continue; }
+        try {
+            if (!dryRun) {
+                const thumb = await makeThumb(ad.photos);
+                await setDoc(doc(db, 'adPhotos', d.id), {
+                    adId: ad.id ?? Number(d.id), photos: ad.photos, updatedAt: new Date().toISOString()
+                });
+                await updateDoc(d.ref, {
+                    thumb: thumb || deleteField(),
+                    photoCount: ad.photos.length,
+                    photos: deleteField()
+                });
+            }
+            res.migrated++;
+        } catch (e) {
+            res.failed++;
+            console.error('migrateAdPhotos: объявление', d.id, e?.code || e?.message);
+        }
+    }
+    invalidateCache('ads');
+    console.log('migrateAdPhotos:', res);
+    return res;
+}
+if (typeof window !== 'undefined') window.migrateAdPhotos = migrateAdPhotos;
 
 // ─────────────────────────────────────────────
 // ПОЛЬЗОВАТЕЛИ — коллекция users/{nickname}, один документ на юзера.

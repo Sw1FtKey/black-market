@@ -74,7 +74,20 @@ export function safeImgSrc(src) {
     if (typeof src !== 'string') return '';
     if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(src)) return src;
     if (/^https:\/\/[^\s"'<>`]+$/.test(src)) return src;
+    // свои файлы проекта (стоковые заглушки): img/stock/cars.jpg
+    if (/^\/?img\/[A-Za-z0-9_\-./]+$/.test(src)) return src;
     return '';
+}
+
+// Картинка для карточки объявления: миниатюра, а у старых объявлений — первое фото
+export function adThumbSrc(ad) {
+    return safeImgSrc((ad && (ad.thumb || (ad.photos && ad.photos[0]))) || '');
+}
+
+// Сколько фото у объявления (у новых — поле photoCount, у старых — длина массива)
+export function adPhotoCount(ad) {
+    const n = ad && (ad.photoCount ?? (ad.photos ? ad.photos.length : 0));
+    return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 // ─────────────────────────────────────────────

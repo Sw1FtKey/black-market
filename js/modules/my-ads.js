@@ -2,7 +2,7 @@
 import { db } from '../firebase-config.js';
 import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showToast, escapeHtml, compressImage } from '../utils.js';
-import { getAllAds, updateAd, deleteAd as deleteAdFromAPI } from '../api.js';
+import { getAllAds, updateAd, deleteAd as deleteAdFromAPI, withPhotos } from '../api.js';
 import { getFavorites, saveFavorites, updateFavCount, toggleFavorite } from './favorites.js';
 import { getCurrentCategory, setCurrentCategory } from './state.js';
 import { showConfirm } from './main.js';
@@ -80,8 +80,19 @@ export function deleteAd(adId) {
 
 export async function editAd(adId) {
     const allAds = await getAllAds();
-    const ad = allAds.find(a => a.id === adId);
-    if (!ad) return;
+    const adBase = allAds.find(a => a.id === adId);
+    if (!adBase) return;
+
+    // Полные фото лежат отдельно (adPhotos). Без них редактор показал бы пустой
+    // список, а сохранение стёрло бы фото — поэтому при ошибке не открываем.
+    let ad;
+    try {
+        ad = await withPhotos(adBase);
+    } catch (e) {
+        console.error('editAd: не удалось загрузить фото', e);
+        showToast('Не удалось загрузить фото объявления. Попробуйте ещё раз', 'error');
+        return;
+    }
     
     const existingModal = document.querySelector('.edit-modal-overlay');
     if (existingModal) existingModal.remove();
@@ -437,7 +448,7 @@ export async function saveEditAd(adId) {
         price,
         description,
         contact: contactRaw || null,
-        photos: (typeof window._getEditPhotos === 'function') ? window._getEditPhotos() : (orig.photos || []),
+        photos: (typeof window._getEditPhotos === 'function') ? window._getEditPhotos() : undefined, // undefined = фото не менять (см. updateAd)
         updatedAt: new Date().toISOString()
     };
 
