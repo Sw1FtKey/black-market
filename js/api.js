@@ -82,6 +82,22 @@ const _photoCache = new Map();
 
 const isInlinePhoto = p => typeof p === 'string' && p.startsWith('data:image/');
 
+// Firestore не принимает undefined ни в одном поле (в том числе вложенном), а формы
+// редактирования отдают undefined для необязательных полей — убираем такие поля.
+function stripUndefined(v) {
+    if (Array.isArray(v)) return v.filter(x => x !== undefined).map(stripUndefined);
+    if (v && typeof v === 'object') {
+        const proto = Object.getPrototypeOf(v);
+        if (proto !== Object.prototype && proto !== null) return v; // Date, deleteField() и т.п.
+        const out = {};
+        for (const [k, val] of Object.entries(v)) {
+            if (val !== undefined) out[k] = stripUndefined(val);
+        }
+        return out;
+    }
+    return v;
+}
+
 async function makeThumb(photos) {
     const first = photos[0];
     if (!first) return null;
@@ -124,7 +140,7 @@ export async function saveAd(ad) {
         }
         // Сначала объявление: правила разрешают писать adPhotos только владельцу
         // уже существующего объявления
-        await setDoc(adRef, data);
+        await setDoc(adRef, stripUndefined(data));
         if (heavy) {
             try {
                 await setDoc(doc(db, 'adPhotos', String(ad.id)), {
@@ -180,7 +196,7 @@ export async function updateAd(adId, updates) {
             }
         }
 
-        await setDoc(adRef, data, { merge: true });
+        await setDoc(adRef, stripUndefined(data), { merge: true });
         _photoCache.delete(String(adId));
         invalidateCache('ads');
         return true;
@@ -194,10 +210,12 @@ export async function updateAd(adId, updates) {
 // из консоли браузера на главной:  await migrateAdPhotos({ dryRun: true })  — посмотреть,
 // что будет;  await migrateAdPhotos()  — выполнить. Копия фото сначала пишется в
 // adPhotos, и только потом удаляется из объявления — потерять фото невозможно.
-export async function migrateAdPhotos({ dryRun = false } = {}) {
+export async function migrateAdPhotos({ dryRun = false, onProgress = null } = {}) {
     const snap = await getDocs(collection(db, 'ads'));
     const res = { total: snap.size, migrated: 0, skipped: 0, failed: 0, dryRun };
+    let done = 0;
     for (const d of snap.docs) {
+        if (onProgress) onProgress({ done: done++, total: snap.size });
         const ad = d.data();
         if (!Array.isArray(ad.photos) || !ad.photos.some(isInlinePhoto)) { res.skipped++; continue; }
         try {

@@ -164,6 +164,7 @@
         }
 
         .profile-ad-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+        .profile-ad-thumb svg { width: 100%; height: auto; padding: 3px; box-sizing: border-box; }
 
         .profile-ad-body { flex: 1; min-width: 0; }
         .profile-ad-cat { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; text-transform: uppercase; margin-bottom: 4px; }
@@ -488,6 +489,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/fi
 import { getAllAds, getReviews, getAdStats, getUserRole, findUser } from './js/api.js';
 import { escapeHtml, timeAgo, formatPrice, safeImgSrc, starsHtml, clampRating, adThumbSrc } from './js/utils.js';
 import { CATEGORY_COLORS, CATEGORY_BADGE_NAMES, CATEGORY_ICONS } from './js/categories-data.js';
+import { renderPlateSVG } from './js/plate-render.js';
 import { ALL_SERVERS } from './js/servers-data.js';
 import { BADGES_CONFIG, RARITY_LABELS, ROLE_LABELS } from './js/badges-data.js';
 
@@ -676,9 +678,15 @@ function renderAds(ads) {
         const color = CATEGORY_COLORS[ad.category] || '#888';
         const catName = CATEGORY_BADGE_NAMES[ad.category] || ad.category;
         const thumbSrc = adThumbSrc(ad);
-        const thumb = thumbSrc
-            ? `<img src="${thumbSrc}" alt="">`
-            : getCatEmoji(ad.category);
+        // Как на главной: номер рисуем бланком, есть фото — фото, иначе крупная иконка категории
+        let thumb;
+        if (ad.category === 'plates' && ad.plateCountry) {
+            thumb = renderPlateSVG(ad.plateCountry, ad.plateValues || {});
+        } else if (thumbSrc) {
+            thumb = `<img src="${thumbSrc}" alt="">`;
+        } else {
+            thumb = placeholderIcon(ad.category, color);
+        }
 
         return `
         <div class="profile-ad-row" onclick="openAd(${ad.id})">
@@ -692,6 +700,7 @@ function renderAds(ads) {
             <div class="profile-ad-arrow">›</div>
         </div>`;
     }).join('');
+    if (window.lucide) lucide.createIcons();
 }
 
 function renderReviews(reviews) {
@@ -719,6 +728,11 @@ function renderReviews(reviews) {
             <div class="profile-review-text">${escapeHtml(r.text || '')}</div>
         </div>`;
     }).join('');
+}
+
+function placeholderIcon(cat, color) {
+    const icon = CATEGORY_ICONS[cat] || 'package';
+    return `<i data-lucide="${icon}" width="28" height="28" style="color:${color};opacity:0.6;"></i>`;
 }
 
 function getCatEmoji(cat) {

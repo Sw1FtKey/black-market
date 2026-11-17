@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перенос фото — Black Market</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #0b0b0b; color: #fff; font-family: Arial, Helvetica, sans-serif; padding: 24px 16px; }
+        .box { max-width: 640px; margin: 0 auto; background: rgba(17,17,17,.95); border: 1px solid rgba(255,30,30,.25); border-radius: 16px; padding: 24px; }
+        h1 { margin: 0 0 12px; font-size: 22px; color: #ff1e1e; }
+        p { color: #aaa; line-height: 1.55; font-size: 14px; margin: 0 0 14px; }
+        #status { padding: 12px 14px; border-radius: 10px; background: rgba(255,255,255,.05); font-size: 14px; margin-bottom: 16px; }
+        .ok { color: #4caf50; } .bad { color: #f44336; }
+        .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+        button { padding: 12px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+        button.primary { background: linear-gradient(135deg, #ff1e1e, #cc0000); border: none; }
+        button:disabled { opacity: .4; cursor: not-allowed; }
+        .bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; margin-bottom: 12px; display: none; }
+        .bar > div { height: 100%; width: 0; background: #ff1e1e; transition: width .2s; }
+        pre { background: #000; border-radius: 10px; padding: 12px; font-size: 13px; color: #ccc; white-space: pre-wrap; margin: 0; min-height: 60px; }
+        a { color: #888; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>Перенос фото объявлений</h1>
+    <p>Одноразовая страница для администратора. Переносит фото старых объявлений в отдельные документы, чтобы главная грузилась быстрее.
+       Копия фото сначала записывается на новое место и только потом удаляется из объявления — потерять фото нельзя.
+       Повторный запуск безопасен.</p>
+    <div id="status">Проверка доступа…</div>
+    <div class="btns">
+        <button id="dryBtn" disabled>1. Проверить (ничего не меняет)</button>
+        <button id="runBtn" class="primary" disabled>2. Перенести</button>
+    </div>
+    <div class="bar" id="bar"><div id="barFill"></div></div>
+    <pre id="log">Нажми «Проверить», чтобы увидеть, сколько объявлений будет перенесено.</pre>
+    <p style="margin-top:14px;"><a href="index.html">← На главную</a></p>
+</div>
+
+<script type="module">
+import { auth, db } from './js/firebase-config.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { migrateAdPhotos } from './js/api.js';
+
+const $ = id => document.getElementById(id);
+const log = t => { $('log').textContent = t; };
+
+function nickname() {
+    try { return JSON.parse(localStorage.getItem('currentUser'))?.nickname || null; } catch { return null; }
+}
+
+async function myRole(nick) {
+    if (!nick) return null;
+    const snap = await getDoc(doc(db, 'data', 'roles'));
+    const items = snap.exists() ? (snap.data().items || {}) : {};
+    return items[nick] || items[nick.toLowerCase()] || null;
+}
+
+async function start(mode) {
+    $('dryBtn').disabled = true; $('runBtn').disabled = true;
+    $('bar').style.display = 'block';
+    log(mode === 'dry' ? 'Проверяю…' : 'Переношу, не закрывай страницу…');
+    try {
+        const res = await migrateAdPhotos({
+            dryRun: mode === 'dry',
+            onProgress: ({ done, total }) => { $('barFill').style.width = (total ? Math.round(done / total * 100) : 100) + '%'; }
+        });
+        $('barFill').style.width = '100%';
+        const lines = [
+            `Всего объявлений: ${res.total}`,
+            `${mode === 'dry' ? 'Будет перенесено' : 'Перенесено'}: ${res.migrated}`,
+            `Пропущено (уже перенесены или без фото): ${res.skipped}`,
+            `Ошибок: ${res.failed}`
+        ];
+        if (res.failed) lines.push('', 'Есть ошибки — подробности в консоли браузера (F12). Запусти перенос ещё раз: уже перенесённые будут пропущены.');
+        else if (mode === 'dry') lines.push('', res.migrated ? 'Всё в порядке. Нажми «2. Перенести».' : 'Переносить нечего.');
+        else lines.push('', 'Готово. Обнови главную страницу (Ctrl+Shift+R) и проверь несколько объявлений.');
+        log(lines.join('\n'));
+    } catch (e) {
+        log('Ошибка: ' + (e?.code || e?.message || e));
+    }
+    $('dryBtn').disabled = false; $('runBtn').disabled = mode === 'dry' ? false : false;
+}
+
+onAuthStateChanged(auth, async user => {
+    if (!user) { location.href = 'register.html'; return; }
+    let role = null;
+    try { role = await myRole(nickname()); } catch {}
+    if (role !== 'admin' && role !== 'owner') {
+        $('status').innerHTML = '<span class="bad">Эта страница только для администратора.</span>';
+        return;
+    }
+    $('status').textContent = `Доступ есть — вы вошли как ${nickname()} (${role})`;
+    $('status').className = 'ok';
+    $('dryBtn').disabled = false; $('runBtn').disabled = false;
+    $('dryBtn').onclick = () => start('dry');
+    $('runBtn').onclick = () => { if (confirm('Перенести фото всех старых объявлений?')) start('run'); };
+});
+</script>
+</body>
+</html>

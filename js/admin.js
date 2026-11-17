@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, updateDoc, query, 
 import { CATEGORY_SIDEBAR_NAMES } from './categories-data.js';
 import { BADGES_CONFIG } from './badges-data.js';
 import { safeImgSrc } from './utils.js';
+import { renderPlateSVG } from './plate-render.js';
 
 // ===== ЗАЩИТА ОТ ДВОЙНОГО КЛИКА =====
 const processingActions = new Set();
@@ -607,7 +608,7 @@ function openAdModal(ad) {
     if (existing) existing.remove();
     const priceFormatted = ad.price ? ad.price.toLocaleString('ru-RU') + ' ₽' : '—';
     const date = ad.createdAt ? new Date(ad.createdAt).toLocaleString('ru-RU') : '—';
-    const photos = ad.photos?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">${ad.photos.map(p => `<img src="${safeImgSrc(p)}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : '';
+    const photos = ad.photos?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">${ad.photos.map(p => `<img src="${safeImgSrc(p)}" style="width:96px;height:96px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'adminAdModal';
@@ -645,14 +646,58 @@ window.deleteAdDirect = async function(adId) {
 };
 
 function renderAdDetails(ad) {
-    if (!ad || ad.category !== 'cars') return '';
-    const parts = [];
-    if (ad.firmware) parts.push(`<span style="background:rgba(255,30,30,0.1);border:1px solid rgba(255,30,30,0.2);color:#ff6b6b;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="settings" width="12" height="12"></i> ${ad.firmware}</span>`);
-    if (ad.lights?.underglow?.has) parts.push(`<span style="background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.2);color:#ffa726;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="lightbulb" width="12" height="12"></i> Подсветка</span>`);
-    if (ad.lights?.strobe?.has) parts.push(`<span style="background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.2);color:#ce93d8;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="zap" width="12" height="12"></i> Стробы</span>`);
-    if (ad.suspension?.length) ad.suspension.forEach(s => parts.push(`<span style="background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.2);color:#64b5f6;padding:4px 10px;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:5px;"><i data-lucide="wrench" width="12" height="12"></i> ${s === 'pneumatic' ? 'Пневма' : 'Гидравлика'}</span>`));
-    if (!parts.length) return '';
-    return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">${parts.join('')}</div>`;
+    if (!ad) return '';
+    const yn = v => v === 'yes' || v === true ? 'Да' : (v === 'no' || v === false ? 'Нет' : '');
+    const fmt = v => {
+        if (v === undefined || v === null || v === '') return '';
+        if (Array.isArray(v)) return v.map(fmt).filter(Boolean).join(', ');
+        if (typeof v === 'object') return Object.entries(v).filter(([, x]) => x).map(([k]) => k).join(', ');
+        return String(v);
+    };
+    const money = v => (v || v === 0) && !isNaN(Number(v)) ? Number(v).toLocaleString('ru-RU') + ' ₽' : fmt(v);
+    const rows = [];
+    const add = (label, value) => { const v = fmt(value); if (v) rows.push([label, v]); };
+
+    add('Категория', CATEGORY_SIDEBAR_NAMES[ad.category] || ad.category);
+    add('Сервер', ad.server);
+    add('Контакты', ad.contact);
+
+    if (ad.category === 'cars') {
+        add('Пробег', ad.mileage);
+        add('Прошивка', ad.firmware);
+        add('Шины', yn(ad.tires));
+        add('Клиренс', yn(ad.clearance));
+        add('Запуск', yn(ad.launch));
+        add('ПДВ', yn(ad.pdv));
+        add('Антирадар', yn(ad.antiradar));
+        if (ad.lights?.underglow?.has) add('Неон', 'Да' + (fmt(ad.lights.underglow.positions) ? ': ' + fmt(ad.lights.underglow.positions) : ''));
+        if (ad.lights?.highBeam) add('Дальний свет', 'Да');
+        if (ad.lights?.strobe?.has) add('Стробоскопы', 'Да' + (fmt(ad.lights.strobe.type) ? ': ' + fmt(ad.lights.strobe.type) : ''));
+        add('Подвеска', ad.suspension);
+    } else if (ad.category === 'houses') {
+        add('Расположение', ad.location);
+        add('Улучшения', ad.upgrades);
+        add('Подвал', ad.basement);
+    } else if (ad.category === 'business') {
+        add('Тип бизнеса', ad.businessCategoryName || ad.businessCategory);
+        add('Номер бизнеса', ad.businessNumber);
+        add('Расположение', ad.businessLocation);
+        if (ad.businessIncomeFrom || ad.businessIncomeTo) {
+            add('Доход', [money(ad.businessIncomeFrom), money(ad.businessIncomeTo)].filter(Boolean).join(' — '));
+        }
+    } else if (ad.category === 'plates') {
+        add('Страна номера', ad.plateCountry);
+    }
+
+    const plate = ad.category === 'plates' && ad.plateCountry
+        ? `<div style="max-width:320px;margin:0 auto 14px;">${renderPlateSVG(ad.plateCountry, ad.plateValues || {})}</div>` : '';
+    if (!rows.length && !plate) return '';
+    const table = rows.map(([k, v]) => `
+        <div style="display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;">
+            <span style="color:#777;flex-shrink:0;">${escapeHtml(k)}</span>
+            <span style="color:#ddd;text-align:right;word-break:break-word;">${escapeHtml(v)}</span>
+        </div>`).join('');
+    return `${plate}<div style="margin-bottom:14px;">${table}</div>`;
 }
 
 // ===== ИСТОРИЯ НАРУШЕНИЙ =====
